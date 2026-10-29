@@ -86,6 +86,7 @@ test('permanent URL uses the UUID and a fixed origin; Base64 is reversible displ
 function pageFor(work) {
   let qrUrl;
   const page=load('src/app/works/[id]/page.tsx',{
+    './certificate.css':{},
     '@/lib/public-work':{getPublicWork:async()=>work,permanentWorkUrl:model().permanentWorkUrl},
     '@/lib/time-claims':dates,
     '@/components/certificate-actions':({url})=>createElement('button',{'data-copy-url':url},'Sao chép liên kết'),
@@ -104,15 +105,19 @@ test('pending certificate never displays VERIFIED or a hash and omits private re
   const record=await model().getPublicWork(id);
   const {page,qrUrl}=pageFor(record);
   const html=renderToStaticMarkup(await page.default(context));
-  assert.doesNotMatch(html,/INTEGRITY VERIFIED/);
-  assert.match(html,/PENDING/);
+  assert.doesNotMatch(html,/data-integrity="verified"/);
+  assert.match(html,/data-integrity="pending"/);
   assert.doesNotMatch(html,/class="certificate-hash"/);
   assert.doesNotMatch(html,/Private registration notes|staging\/.+secret|vault\/.+secret/);
   assert.match(html,/\/api\/works\/fe0a6fde-46c3-408b-912c-a8937b98c8a3\/preview/);
-  assert.match(html,/Copyright Ownership Declaration/);
-  assert.match(html,/License information/);
-  assert.match(html,/Điều khoản cấp phép sử dụng/);
-  assert.match(html,/Chưa được cung cấp trong hồ sơ/);
+  assert.match(html,/Ownership Declaration/);
+  assert.doesNotMatch(html,/License information|Logo và chữ ký|Chưa được cung cấp trong hồ sơ/);
+  assert.equal((html.match(/class="certificate-status"/g)??[]).length,1);
+  assert.equal((html.match(/Declared Owner/g)??[]).length,1);
+  assert.ok(html.indexOf('certificate-title-block')<html.indexOf('class="certificate-status"'));
+  assert.ok(html.indexOf('class="certificate-status"')<html.indexOf('class="certificate-preview"'));
+  assert.ok(html.indexOf('class="certificate-preview"')<html.indexOf('class="certificate-owner"'));
+  assert.ok(html.indexOf('class="certificate-owner"')<html.indexOf('class="certificate-permalink"'));
   const permanent=model().permanentWorkUrl(id);
   assert.equal(qrUrl(),permanent);
   assert.match(html,/data:image\/png;base64,/);
@@ -126,7 +131,8 @@ test('verified certificate displays the exact hash and distinguishes publication
     const record=await model({...asset,status:'verified',is_public,sha256:hash,verified_at:'2026-10-29T12:20:00Z'}).getPublicWork(id);
     const {page}=pageFor(record);
     const html=renderToStaticMarkup(await page.default(context));
-    assert.match(html,/INTEGRITY VERIFIED/);
+    assert.match(html,/data-integrity="verified"/);
+    assert.equal((html.match(/class="certificate-status"/g)??[]).length,1);
     assert.ok(html.includes(hash));
     assert.equal(html.includes('Private registration notes'),is_public);
     assert.deepEqual((await page.generateMetadata(context)).robots,{index:is_public,follow:is_public});
