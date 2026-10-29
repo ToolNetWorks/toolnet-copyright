@@ -49,7 +49,7 @@ export default async function Work({ params }: { params: Promise<{id: string}> }
          </p>
          <p><strong>Chủ sở hữu khai báo:</strong> {asset.owner_name}</p>
          <p><strong>Ngày tạo gốc khai báo:</strong> {formatViDate(asset.original_created_at)}</p>
-         <p><strong>Ngày tải lên thực tế:</strong> {formatViDate(asset.created_at)}</p>
+         <p><strong>Ngày theo khai báo:</strong> {formatViDate(asset.original_created_at)}</p>
          <a className="btn" href={tumblrUrl}
             target="_blank" rel="noopener noreferrer">
            Xem bài viết Tumblr
