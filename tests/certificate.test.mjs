@@ -110,6 +110,9 @@ test('pending certificate never displays VERIFIED or a hash and omits private re
   assert.doesNotMatch(html,/Private registration notes|staging\/.+secret|vault\/.+secret/);
   assert.match(html,/\/api\/works\/fe0a6fde-46c3-408b-912c-a8937b98c8a3\/preview/);
   assert.match(html,/Copyright Ownership Declaration/);
+  assert.match(html,/License information/);
+  assert.match(html,/Điều khoản cấp phép sử dụng/);
+  assert.match(html,/Chưa được cung cấp trong hồ sơ/);
   const permanent=model().permanentWorkUrl(id);
   assert.equal(qrUrl(),permanent);
   assert.match(html,/data:image\/png;base64,/);

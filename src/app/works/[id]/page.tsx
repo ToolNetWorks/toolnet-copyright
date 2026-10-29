@@ -29,7 +29,7 @@ export default async function Work({ params }: Context) {
   const permanentUrl = permanentWorkUrl(asset.id);
   const microtext = Buffer.from(permanentUrl, 'utf8').toString('base64');
   const qr = await QRCode.toDataURL(permanentUrl, {
-    errorCorrectionLevel: 'M', margin: 4, width: 240, color: { dark: '#173d31', light: '#ffffffff' },
+    errorCorrectionLevel: 'M', margin: 4, width: 240, color: { dark: '#111111', light: '#ffffffff' },
   });
   const status = published ? 'Đã xác minh & công bố' : integrityVerified ? 'Đã xác minh · Chờ công bố' : 'Đã đăng Tumblr · Chờ xác minh';
   const ownership = asset.owner_basis === 'original_creator' ? 'Tác giả / chủ sở hữu gốc'
@@ -48,7 +48,7 @@ export default async function Work({ params }: Context) {
               <span className="certificate-brand-icon"><Fingerprint size={30} strokeWidth={1.4} aria-hidden="true"/></span>
               <span>TOOLNET<strong>COPYRIGHT</strong></span>
             </Link>
-            <div className="certificate-heading"><span>COPYRIGHT RECORD CERTIFICATE</span><p>Hồ sơ tác phẩm & toàn vẹn tệp</p></div>
+            <div className="certificate-heading"><span>TOOLNET COPYRIGHT REGISTRY</span><p>Hồ sơ bảo vệ bản quyền</p></div>
             <div className="certificate-edition"><span>RECORD NO.</span><strong>{asset.id.slice(0, 8).toUpperCase()}</strong><span>TOOLNET REGISTRY</span></div>
           </header>
           <div className="certificate-grid">
@@ -59,20 +59,20 @@ export default async function Work({ params }: Context) {
                 <strong>{integrityVerified ? 'SHA-256' : 'PENDING'}</strong>
                 <span className="certificate-seal-bottom">{integrityVerified ? 'INTEGRITY VERIFIED' : 'INTEGRITY CHECK'}</span>
               </div>
-              <span className="certificate-overline">RECORD STATUS</span>
-              <h2>{integrityVerified ? 'Toàn vẹn tệp\nđã xác minh' : 'Đang chờ\nxác minh tệp'}</h2>
+              <span className="certificate-overline">TRẠNG THÁI HỒ SƠ</span>
+              <h2>{integrityVerified ? 'Toàn vẹn tệp đã xác minh' : 'Đang chờ xác minh tệp'}</h2>
               <p className="certificate-protection-note">{integrityVerified
                 ? 'SHA-256 của tệp nguồn đã được đối chiếu với bản lưu trữ.'
                 : 'Ảnh đã được đăng Tumblr. SHA-256 của tệp nguồn chưa được kiểm tra.'}</p>
               <div className="certificate-protection-list">
-                <div><CircleCheck size={16} aria-hidden="true"/><span>Hồ sơ đã ghi nhận</span></div>
-                <div><LockKeyhole size={16} aria-hidden="true"/><span>Bản gốc lưu riêng tư</span></div>
-                <div>{integrityVerified ? <CircleCheck size={16} aria-hidden="true"/> : <Clock3 size={16} aria-hidden="true"/>}<span>{integrityVerified ? 'Đã kiểm tra SHA-256' : 'Chờ kiểm tra SHA-256'}</span></div>
+                <div><CircleCheck size={17} aria-hidden="true"/><span><strong>Đăng ký tác phẩm</strong>Hồ sơ đã ghi nhận</span></div>
+                <div><LockKeyhole size={17} aria-hidden="true"/><span><strong>Lưu trữ tệp nguồn</strong>Bản gốc lưu riêng tư</span></div>
+                <div>{integrityVerified ? <CircleCheck size={17} aria-hidden="true"/> : <Clock3 size={17} aria-hidden="true"/>}<span><strong>Xác minh toàn vẹn</strong>{integrityVerified ? 'Đã kiểm tra SHA-256' : 'Chờ kiểm tra SHA-256'}</span></div>
               </div>
               <p className="certificate-seal-disclaimer">Bản ghi kỹ thuật của ToolNet.<br/>Không phải xác thực pháp lý của DMCA.</p>
             </aside>
             <section className="certificate-work" aria-label="Tác phẩm">
-              <div className="certificate-work-heading"><span className="certificate-overline">REGISTERED WORK</span><span className="certificate-media-type">{asset.media_type === 'image' ? 'PHOTOGRAPH' : 'VIDEO'}</span></div>
+              <div className="certificate-work-heading"><span className="certificate-overline">TÁC PHẨM ĐĂNG KÝ</span><span className="certificate-media-type">{asset.media_type === 'image' ? 'HÌNH ẢNH' : 'VIDEO'}</span></div>
               <h1 id="certificate-title">{asset.title}</h1>
               <p className="certificate-byline">Khai báo bởi <strong>{asset.owner_name}</strong></p>
               <figure className="certificate-preview">
@@ -81,12 +81,12 @@ export default async function Work({ params }: Context) {
                     ? <Image src={`/api/works/${asset.id}/preview`} alt={`Bản xem trước: ${asset.title}`} width={1200} height={900} unoptimized className="certificate-preview-image"/>
                     : <video controls preload="metadata" src={`/api/works/${asset.id}/preview`} aria-label={`Bản xem trước video: ${asset.title}`}/>
                     : <div className="certificate-preview-placeholder"><ImageIcon size={38} strokeWidth={1} aria-hidden="true"/><span>Chưa có bản xem trước để hiển thị</span></div>}
-                  <span className="certificate-preview-label"><LockKeyhole size={11} aria-hidden="true"/> PUBLIC PREVIEW</span>
+                  <span className="certificate-preview-label"><LockKeyhole size={13} aria-hidden="true"/> BẢN XEM TRƯỚC</span>
                 </div>
                 <figcaption>Chỉ hiển thị bản xem trước. Tệp nguồn được lưu trong kho riêng tư.</figcaption>
               </figure>
               <div className="certificate-state"><span aria-hidden="true"/>{status}</div>
-              <p className="certificate-record-note">Một liên kết cố định. Một hồ sơ có thể đối chiếu.</p>
+              <p className="certificate-record-note">Trạng thái được cập nhật theo kết quả kiểm tra thực tế.</p>
             </section>
             <aside className="certificate-metadata" aria-label="Thông tin và liên kết cố định">
               <div className="certificate-permalink">
@@ -103,15 +103,23 @@ export default async function Work({ params }: Context) {
                 <div><dt>Cơ sở quyền khai báo</dt><dd>{ownership}</dd></div>
                 <div><dt>Loại tác phẩm</dt><dd>{asset.media_type === 'image' ? 'Hình ảnh' : 'Video'}</dd></div>
                 <div><dt>Mã định danh tác phẩm</dt><dd className="certificate-uuid">{asset.id}</dd></div>
+                <div className="certificate-owner-materials"><dt>Logo và chữ ký chủ sở hữu</dt><dd>Chưa được cung cấp trong hồ sơ.</dd></div>
               </dl>
             </aside>
           </div>
+          <div className="certificate-declaration-grid">
           <section className="certificate-declaration" aria-labelledby="ownership-heading">
             <div className="certificate-section-heading"><FileCheck2 size={20} strokeWidth={1.5} aria-hidden="true"/><div><span className="certificate-overline">OWNER-DECLARED INFORMATION</span><h2 id="ownership-heading">Copyright Ownership Declaration</h2></div></div>
             <p>Chủ sở hữu được khai báo là <strong>{asset.owner_name}</strong>, với cơ sở quyền <strong>{ownership.toLowerCase()}</strong> đối với tác phẩm <strong>“{asset.title}”</strong>. Ngày sáng tạo gốc được chủ sở hữu khai báo: <strong>{formatViDate(asset.original_created_at)}</strong>.</p>
             {published && asset.description && <p className="certificate-description">{asset.description}</p>}
             <p className="certificate-declaration-note">Nội dung trên được trích từ hồ sơ do chủ sở hữu cung cấp. Bản ghi này không tự xác nhận quyền tác giả, không phải chứng nhận pháp lý và không được DMCA xác thực.</p>
           </section>
+          <section className="certificate-license" aria-labelledby="license-heading">
+            <div className="certificate-section-heading"><FileCheck2 size={20} strokeWidth={1.5} aria-hidden="true"/><div><span className="certificate-overline">THÔNG TIN GIẤY PHÉP</span><h2 id="license-heading">License information</h2></div></div>
+            <dl><div><dt>Cơ sở quyền được khai báo</dt><dd>{ownership}</dd></div><div><dt>Điều khoản cấp phép sử dụng</dt><dd>Chưa được cung cấp trong hồ sơ.</dd></div></dl>
+            <p>Việc hiển thị tác phẩm trên trang này không tự cấp quyền sao chép, phân phối hoặc sử dụng tác phẩm.</p>
+          </section>
+          </div>
           <div className="certificate-evidence-grid">
             <section className="certificate-integrity" aria-labelledby="integrity-heading">
               <div className="certificate-section-heading"><Fingerprint size={21} strokeWidth={1.5} aria-hidden="true"/><div><span className="certificate-overline">FILE INTEGRITY</span><h2 id="integrity-heading">{integrityVerified ? 'SHA-256 đã xác minh' : 'Chờ xác minh SHA-256'}</h2></div></div>
@@ -134,12 +142,12 @@ export default async function Work({ params }: Context) {
             </dl>
           </details>
           <footer className="certificate-bottom">
-            <div className="certificate-bottom-brand"><Shield size={17} aria-hidden="true"/><span>TOOLNET COPYRIGHT<small>Clarity in ownership. Integrity in every record.</small></span></div>
+            <div className="certificate-bottom-brand"><Shield size={20} aria-hidden="true"/><span>TOOLNET COPYRIGHT<small>Hồ sơ công khai theo UUID</small></span></div>
             <CertificateActions url={permanentUrl} title={asset.title}/>
           </footer>
         </div>
         <div className="certificate-microtext" aria-label="Mã định danh hiển thị Base64 của Permanent URL">
-          <div className="certificate-microtext-line" data-permanent-url-base64={microtext}><span>TOOLNET · URL RECORD · </span><code>{microtext}</code><span aria-hidden="true"> · {microtext} · {microtext}</span></div>
+          <div className="certificate-microtext-line" data-permanent-url-base64={microtext}><span>TOOLNET · URL RECORD · </span><code>{microtext}</code></div>
           <p>Base64 của Permanent URL · Mã định danh hiển thị, không phải chữ ký số hoặc bằng chứng xác thực độc lập.</p>
         </div>
       </article>
