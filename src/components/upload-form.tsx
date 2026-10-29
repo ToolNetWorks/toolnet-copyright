@@ -34,6 +34,7 @@ export default function UploadForm() {
   const [description, setDescription] = useState('');
   const [ownerBasis, setOwnerBasis] = useState('original_creator');
   const [confirmedRights, setConfirmedRights] = useState(false);
+  const [confirmedDeclaration, setConfirmedDeclaration] = useState(false);
   const [dates, setDates] = useState<Record<ClaimedDate, string>>({
     originalCreatedAt: '', originalCapturedAt: '', originalPublishedAt: '', copyrightEffectiveAt: '',
   });
@@ -43,6 +44,8 @@ export default function UploadForm() {
   const [showMoreDates, setShowMoreDates] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploadedAssetId, setUploadedAssetId] = useState<string | null>(null);
+  const [claimSaved, setClaimSaved] = useState(false);
+  const [tumblrUrl, setTumblrUrl] = useState<string | null>(null);
   const [stage, setStage] = useState('');
   const [error, setError] = useState('');
 
@@ -53,7 +56,12 @@ export default function UploadForm() {
       setError('File không hợp lệ hoặc vượt quá 250 MB.'); return;
     }
     if (!confirmedRights) { setError('Bạn cần xác nhận quyền sở hữu hợp pháp.'); return; }
+    if (file?.type.startsWith('image/') && (!confirmedDeclaration || ownerBasis !== 'original_creator')) {
+      setError('Mẫu Tumblr tuyên bố tác giả gốc, sở hữu độc quyền và ảnh tạo tại Nhật Bản. Chỉ tiếp tục nếu bạn xác nhận chính xác các nội dung này.'); return;
+    }
+    const isPhoto = file?.type.startsWith('image/') ?? false;
     const hasDates = Object.values(dates).some(Boolean);
+    if (isPhoto && !dates.originalCreatedAt) { setError('Vui lòng chọn ngày sáng tạo gốc để đăng Tumblr.'); return; }
     if (hasDates && !confirmedDates) { setError('Vui lòng xác nhận các ngày khai báo là trung thực.'); return; }
 
     setBusy(true); setError('');
@@ -97,7 +105,7 @@ export default function UploadForm() {
         setUploadedAssetId(id); // On time-claim failure, retry without uploading again.
       }
 
-      if (hasDates) {
+      if (hasDates && !claimSaved) {
         setStage('Đang lưu ngày gốc do bạn khai báo vào Neon…');
         const response = await fetch(`/api/assets/${id}/time-claims`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -109,6 +117,16 @@ export default function UploadForm() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? 'Không thể lưu thông tin ngày gốc.');
+        setClaimSaved(true);
+      }
+      if (isPhoto && !tumblrUrl) {
+        setStage('Đang đăng ảnh lên Tumblr với ngày hiển thị đã chọn…');
+        const tumblrResponse = await fetch(`/api/assets/${id}/tumblr`, { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ declarationConfirmed: true }) });
+        const tumblr = await tumblrResponse.json();
+        if (!tumblrResponse.ok) throw new Error(tumblr.error ?? 'Không thể đăng lên Tumblr.');
+        if (!tumblr.url) throw new Error('Tumblr không trả về URL bài viết.');
+        setTumblrUrl(tumblr.url);
       }
       router.push('/dashboard?uploaded=1');
       router.refresh();
@@ -119,8 +137,8 @@ export default function UploadForm() {
 
   const dateInput = (field: typeof CLAIM_FIELDS[number]) => (
     <label key={field.key} className="upload-date-field">
-      <span>{field.label} <small>(tùy chọn)</small></span>
-      <input type="datetime-local" value={dates[field.key]}
+      <span>{field.label} <small>{field.key === 'originalCreatedAt' ? '(bắt buộc cho Tumblr)' : '(tùy chọn)'}</small></span>
+      <input type="datetime-local" disabled={claimSaved} value={dates[field.key]}
         onChange={event => setDates(previous => ({ ...previous, [field.key]: event.target.value }))}/>
       <small>{field.hint} · giờ Việt Nam UTC+7</small>
     </label>
@@ -145,7 +163,7 @@ export default function UploadForm() {
 
     <section className="upload-time-section" aria-label="Thời gian gốc tác phẩm">
       <div className="upload-step-heading"><span>02</span><div><strong><CalendarClock size={18}/> Ngày tạo gốc — chỉnh trước SHA-256</strong><small>Nhập ngày thực tế; không bắt buộc điền đủ các mốc.</small></div></div>
-      <p className="upload-time-note">Ngày ở đây là <b>ngày do bạn khai báo</b>, không phải ngày upload hay dấu thời gian được bên thứ ba xác nhận. Hệ thống lưu lịch sử riêng và không sửa ngày xác minh thực tế.</p>
+      <p className="upload-time-note">Ngày này sẽ được gửi tới Tumblr làm <b>ngày hiển thị</b> của bài viết, nếu nền tảng chấp nhận. Đây là ngày do bạn khai báo, không phải chứng cứ bài Tumblr đã tồn tại từ thời điểm đó. Ngày upload và ngày xác minh thực tế được lưu riêng.</p>
       <div className="upload-time-fields">{dateInput(CLAIM_FIELDS[0])}</div>
       <button className="upload-more-dates" type="button" aria-expanded={showMoreDates} onClick={() => setShowMoreDates(previous => !previous)}>
         {showMoreDates ? '− Ẩn các mốc khác' : '+ Thêm ngày chụp/quay, ngày công bố và ngày bắt đầu có quyền'}
@@ -164,11 +182,13 @@ export default function UploadForm() {
       <label className="checkbox-line"><input type="checkbox" checked={confirmedDates} onChange={e => setConfirmedDates(e.target.checked)}/><span>Tôi xác nhận ngày đã nhập là thông tin khai báo trung thực; không phải mốc xác minh độc lập.</span></label>
     </section>
 
-    <div className="upload-step-heading"><span>03</span><div><strong>Lưu hồ sơ và chờ xác minh</strong><small>Sau khi upload, bạn mới nhấn nút “Kiểm tra SHA-256” trên Dashboard.</small></div></div>
+    <div className="upload-step-heading"><span>03</span><div><strong>Tự động đăng Tumblr rồi xác minh SHA-256</strong><small>Ảnh: đăng preview lên Tumblr, lưu URL, rồi xác minh SHA-256. Video: xác minh trước, đăng liên kết sau công bố.</small></div></div>
     <label className="checkbox-line"><input type="checkbox" checked={confirmedRights} onChange={e => setConfirmedRights(e.target.checked)}/><span>Tôi xác nhận có đủ quyền hợp pháp để lưu trữ và công bố tác phẩm này.</span></label>
-    {error && <div className="error-banner" role="alert">{error}{uploadedAssetId && <p>Ảnh đã upload thành công. Bạn có thể sửa dữ liệu rồi lưu lại mà không phải upload lần nữa.</p>}</div>}
+    {file?.type.startsWith('image/') && <label className="checkbox-line"><input type="checkbox" checked={confirmedDeclaration} onChange={e => setConfirmedDeclaration(e.target.checked)}/><span>Tôi xác nhận có thẩm quyền ký tuyên bố dưới tên copyright-toolnet; tác phẩm do tôi tạo, thuộc sở hữu độc quyền, được tạo tại Nhật Bản và các nội dung tuyên bố dưới lời cam đoan là trung thực. Ngày ký tuyên bố sẽ là ngày gửi bài thực tế.</span></label>}
+    {error && <div className="error-banner" role="alert">{error}{uploadedAssetId && <p>File đã upload. Nếu Tumblr từ chối ngày cũ, kiểm tra Dashboard và blog trước khi thử lại để tránh đăng trùng.</p>}</div>}
+    {tumblrUrl && <p className="helper">Bài Tumblr: <a href={tumblrUrl} target="_blank" rel="noopener noreferrer">{tumblrUrl}</a></p>}
     {stage && busy && <p className="muted"><Loader2 size={15} className="spin inline-icon"/> {stage}</p>}
-    <button disabled={busy} className="btn" type="submit">{busy ? <Loader2 size={17} className="spin"/> : <><CheckCircle2 size={17}/>{uploadedAssetId ? 'Lưu ngày gốc và hoàn tất' : 'Upload và lưu hồ sơ (chưa SHA-256)'}</>}</button>
-    <p className="helper">Để trống ngày không biết chính xác. Nếu ảnh đã được upload mà phần ghi ngày lỗi, bạn có thể <Link href={uploadedAssetId ? `/dashboard/works/${uploadedAssetId}/time` : '/dashboard'}>quay lại hồ sơ</Link> để đính chính trước khi xác minh.</p>
+    <button disabled={busy} className="btn" type="submit">{busy ? <Loader2 size={17} className="spin"/> : <><CheckCircle2 size={17}/>{uploadedAssetId ? 'Tiếp tục quy trình đăng ký' : file?.type.startsWith('video/') ? 'Upload video → chờ SHA-256' : 'Upload ảnh → đăng Tumblr → chờ SHA-256'}</>}</button>
+    <p className="helper">Ngày quá khứ trên Tumblr là ngày hiển thị do bạn chọn, không chứng minh bài đăng tồn tại từ thời điểm đó. Ngày gửi bài thực tế vẫn được lưu trong Neon. Sau khi đăng, <Link href="/dashboard">vào Dashboard</Link> để nhấn SHA-256.</p>
   </form>;
 }

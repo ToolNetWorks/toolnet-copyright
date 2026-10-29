@@ -10,14 +10,21 @@ type TumblrRow = { status: string; tumblr_url: string | null; blog: string };
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return deny();
   if (!(await requireSameOrigin(request))) return Response.json({ error: 'Invalid origin' }, { status: 403 });
+  const confirmation = await request.json().catch(() => null);
+  if (confirmation?.declarationConfirmed !== true) return Response.json({
+    error: 'Phải xác nhận rõ các nội dung tuyên bố copyright-toolnet, quyền tác giả gốc và nơi sáng tạo trước khi đăng Tumblr.',
+  }, { status: 400 });
   const parsed = uuid.safeParse((await params).id);
   if (!parsed.success) return Response.json({ error: 'Invalid asset ID' }, { status: 400 });
   const config = tumblrConfiguration();
   if (!config) return Response.json({ error: 'Chưa cấu hình Tumblr trên Vercel Production.' }, { status: 503 });
   const asset = await getAsset(parsed.data).catch(() => null);
   if (!asset) return Response.json({ error: 'Tác phẩm không tồn tại.' }, { status: 404 });
-  if (!asset.is_public || asset.status !== 'verified' || !asset.preview_key) {
-    return Response.json({ error: 'Chỉ được đăng Tumblr sau khi SHA-256 đã xác minh và tác phẩm đã công khai.' }, { status: 409 });
+  const preverificationPhoto = asset.media_type === 'image' && asset.status === 'pending_verification'
+    && !asset.is_public && Boolean(asset.original_created_at) && Boolean(asset.preview_key);
+  const publicVerified = asset.is_public && asset.status === 'verified' && Boolean(asset.preview_key);
+  if (!preverificationPhoto && !publicVerified) {
+    return Response.json({ error: 'Ảnh phải upload hoàn tất, có ngày gốc và bản xem trước trước khi tự đăng Tumblr. Video cần công bố sau xác minh.' }, { status: 409 });
   }
   const sql = database();
   let locked: Record<string, unknown>[];
@@ -42,10 +49,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const result = await publishAssetToTumblr(asset);
     await sql`UPDATE tumblr_publications SET status='published',tumblr_post_id=${result.id},tumblr_url=${result.url},
+      displayed_at_requested=${result.requestedDisplayDate}, displayed_at_confirmed=${result.confirmedDisplayDate},
       published_at=now(),updated_at=now(),last_error=NULL WHERE asset_id=${asset.id}::uuid`;
-    await audit(asset.id, 'tumblr_published', { blog: result.blog, tumblr_id: result.id, tumblr_url: result.url })
+    await audit(asset.id, 'tumblr_published', { blog: result.blog, tumblr_id: result.id, tumblr_url: result.url,
+      display_date_claimed: result.requestedDisplayDate, display_date_returned: result.confirmedDisplayDate,
+      actual_dispatch_time_recorded_by_system: new Date().toISOString(),
+      disclaimer: 'Backdated display is not evidence of historical publication.' })
       .catch(() => console.warn('Tumblr post stored but evidence event needs reconciliation:', asset.id));
-    return Response.json({ success: true, url: result.url });
+    return Response.json({ success: true, url: result.url, displayedAtRequested: result.requestedDisplayDate,
+      displayedAtConfirmed: result.confirmedDisplayDate });
   } catch (error) {
     const certainRejection = error instanceof TumblrApiError && !error.retryable;
     // Ambiguous network/timeout/5xx: do not silently retry and create duplicate posts.

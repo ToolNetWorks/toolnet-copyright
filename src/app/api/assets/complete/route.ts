@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { deny, isAdmin, requireSameOrigin } from '@/lib/auth';
 import { database, getAsset, audit } from '@/lib/db';
-import { headObject } from '@/lib/r2';
+import { headObject, generateImagePreview } from '@/lib/r2';
 export const runtime = 'nodejs';
 export async function POST(request: Request) {
   if (!(await isAdmin())) return deny();
@@ -16,10 +16,19 @@ export async function POST(request: Request) {
     if (Number(head.ContentLength) !== Number(asset.size_bytes) || head.ContentType !== asset.mime_type) {
       return Response.json({ error: 'Uploaded object does not match declared type or size' }, { status: 422 });
     }
+    // Preview is derived from staging for optional Tumblr publication BEFORE user SHA verification.
+    // It is not publicly accessible until a post is explicitly sent to Tumblr.
+    const previewKey = asset.media_type === 'image'
+      ? await generateImagePreview(asset.staging_key, `previews/${asset.id}.webp`)
+      : null;
     const sql = database();
-    await sql`UPDATE assets SET status='pending_verification' WHERE id=${asset.id}::uuid AND status='upload_pending'`;
-    await audit(asset.id, 'upload_received', { size: Number(head.ContentLength), type: head.ContentType });
-    return Response.json({ success: true, status: 'pending_verification' });
+    await sql`UPDATE assets SET status='pending_verification', preview_key=${previewKey}
+      WHERE id=${asset.id}::uuid AND status='upload_pending'`;
+    await audit(asset.id, 'upload_received', {
+      size: Number(head.ContentLength), type: head.ContentType,
+      staged_preview: Boolean(previewKey), verified: false,
+    });
+    return Response.json({ success: true, status: 'pending_verification', tumblrPreviewReady: Boolean(previewKey) });
   } catch (error) {
     console.error('Upload complete failed:', error);
     return Response.json({ error: 'Could not verify uploaded object' }, { status: 503 });

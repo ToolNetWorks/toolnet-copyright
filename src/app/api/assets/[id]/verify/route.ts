@@ -14,6 +14,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!asset) return Response.json({ error: 'Not found' }, { status: 404 });
   if (!['pending_verification', 'verification_failed'].includes(asset.status)) return Response.json({ error: 'Asset not ready for verification' }, { status: 409 });
   try {
+    // For newly registered photos with an origin date, Tumblr must post first.
+    // Old records without date claims retain the existing manual verification flow.
+    if (asset.media_type === 'image' && asset.original_created_at) {
+      const sql = database();
+      const records = await sql`SELECT status, tumblr_url FROM tumblr_publications WHERE asset_id=${asset.id}::uuid`;
+      if (records[0]?.status !== 'published' || !records[0]?.tumblr_url) {
+        return Response.json({ error: 'Đăng Tumblr thành công và lưu URL trước khi kiểm tra SHA-256.' }, { status: 409 });
+      }
+    }
     const source = await headObject(asset.staging_key);
     if (Number(source.ContentLength) !== Number(asset.size_bytes) || source.ContentType !== asset.mime_type) {
       return Response.json({ error: 'Object size or type changed' }, { status: 422 });

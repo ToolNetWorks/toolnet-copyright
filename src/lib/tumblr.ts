@@ -3,6 +3,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { bucket, r2 } from '@/lib/r2';
 import type { Asset } from '@/lib/db';
+import { buildTumblrDeclaration } from '@/lib/tumblr-declaration';
 
 // OAuth 1.0a signature for Tumblr; JSON/multipart bodies are not OAuth form parameters.
 function encode(value: string): string {
@@ -51,7 +52,7 @@ export function tumblrOAuthHeader(method: 'GET' | 'POST', url: string, credentia
     .map(([key, value]) => `${encode(key)}="${encode(value)}"`).join(', ');
 }
 
-type TumblrResponse = { meta?: { status?: number; msg?: string }; response?: { id?: string; user?: { blogs?: { name?: string; url?: string }[] } } };
+type TumblrResponse = { meta?: { status?: number; msg?: string }; response?: { id?: string | number; date?: string; user?: { blogs?: { name?: string; url?: string }[] } } };
 
 async function tumblrRequest(method: 'GET' | 'POST', endpoint: string, config: TumblrCredentials, body?: FormData | string): Promise<TumblrResponse> {
   const response = await fetch(endpoint, {
@@ -99,15 +100,27 @@ async function safePreviewJpeg(key: string): Promise<{ bytes: Buffer; width: num
   return { bytes, width: metadata.width, height: metadata.height };
 }
 
-export async function publishAssetToTumblr(asset: Asset): Promise<{ id: string; url: string; blog: string }> {
+export async function publishAssetToTumblr(asset: Asset): Promise<{ id: string; url: string; blog: string; requestedDisplayDate: string | null; confirmedDisplayDate: string | null }> {
   const config = tumblrConfiguration();
   if (!config) throw new TumblrApiError('Chưa cấu hình đủ 5 biến TUMBLR_* trên Vercel Production.', false);
-  if (!asset.is_public || asset.status !== 'verified' || !asset.preview_key || !asset.sha256) {
-    throw new TumblrApiError('Chỉ đăng được tác phẩm đã xác minh SHA-256 và công khai.', false);
+  if (asset.media_type === 'image' && (!asset.original_created_at || asset.owner_basis !== 'original_creator')) {
+    throw new TumblrApiError('Mẫu tuyên bố này yêu cầu ngày tạo gốc và quyền tác giả gốc. Hãy kiểm tra khai báo trước khi đăng.', false);
+  }
+  const imageBeforeVerify = asset.media_type === 'image' &&
+    asset.status === 'pending_verification' && !asset.is_public && Boolean(asset.original_created_at);
+  const alreadyPublic = asset.is_public && asset.status === 'verified';
+  if ((!imageBeforeVerify && !alreadyPublic) || !asset.preview_key) {
+    throw new TumblrApiError('Ảnh cần upload thành công và khai báo ngày gốc trước khi đăng Tumblr.', false);
+  }
+  // Tumblr's date option changes the post's display date, not its actual submission time.
+  const requestedDisplayDate = asset.original_created_at || null;
+  if (requestedDisplayDate && Date.parse(requestedDisplayDate) >= Date.now()) {
+    throw new TumblrApiError('Ngày hiển thị Tumblr phải nằm trong quá khứ.', false);
   }
   const site = process.env.NEXT_PUBLIC_SITE_URL;
   if (!site || !site.startsWith('https://')) throw new Error('NEXT_PUBLIC_SITE_URL chưa được cấu hình HTTPS.');
   const workUrl = new URL(`/works/${asset.id}`, site).href;
+  const actualSubmissionTime = new Date().toISOString();
   const format = (value: string) => new Intl.DateTimeFormat('vi-VN', { dateStyle: 'long', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
   const content: Record<string, unknown>[] = [
     { type: 'text', text: asset.title, subtype: 'heading1' },
@@ -118,19 +131,31 @@ export async function publishAssetToTumblr(asset: Asset): Promise<{ id: string; 
     content.push({ type: 'image', media: [{ type: 'image/jpeg', identifier: 'original-work-preview', width: preview.width, height: preview.height }],
       alt_text: `Bản xem trước tác phẩm: ${asset.title}` });
     // The image is attached below as multipart, no R2 private URLs are shared with Tumblr.
-    const description = asset.description ? asset.description.slice(0, 800) : 'Hồ sơ tác phẩm trên ToolNet Copyright.';
-    content.push({ type: 'text', text: description });
-    if (asset.original_created_at) content.push({ type: 'text', text: `Ngày sáng tạo gốc (chủ sở hữu khai báo): ${format(asset.original_created_at)}` });
-    content.push({ type: 'text', text: `Ngày tải lên và xác minh được ghi riêng trong hồ sơ. SHA-256: ${asset.sha256}` });
-    content.push({ type: 'link', url: workUrl, title: 'Hồ sơ công khai và chứng cứ ToolNet Copyright' });
-    const payload = { state: 'published', content, tags: 'copyright,toolnet copyright,original work', source_url: workUrl };
+    // Post the complete user-provided declaration, not a shortened caption.
+    // DATE OF CREATION = owner's claim; DATE OF DECLARATION = actual statement date.
+    const declaration = buildTumblrDeclaration(asset.original_created_at!, actualSubmissionTime);
+    content.push({ type: 'text', text: declaration });
+    content.push({ type: 'text', text: `Ngày gửi bài Tumblr thực tế: ${actualSubmissionTime}. Ngày hiển thị quá khứ chỉ là ngày do chủ sở hữu khai báo, không chứng minh bài đã tồn tại từ ngày đó.` });
+    if (asset.sha256) content.push({ type: 'text', text: `SHA-256 đã xác minh: ${asset.sha256}` });
+    else content.push({ type: 'text', text: 'Đang chờ ToolNet Copyright xác minh SHA-256 và công bố hồ sơ chứng cứ.' });
+    content.push({ type: 'link', url: workUrl, title: 'Hồ sơ ToolNet Copyright (công khai sau khi xác minh)' });
+    const payload = { state: 'published', date: requestedDisplayDate ?? undefined, content,
+      tags: 'copyright,toolnet copyright,original work', source_url: workUrl };
     const form = new FormData();
     form.append('json', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     form.append('original-work-preview', new Blob([new Uint8Array(preview.bytes)], { type: 'image/jpeg' }), 'preview.jpg');
     const endpoint = `https://api.tumblr.com/v2/blog/${config.blog}/posts`;
     const result = await tumblrRequest('POST', endpoint, config, form);
     if (!result.response?.id) throw new TumblrApiError('Tumblr không trả về post ID. Cần kiểm tra blog trước khi đăng lại.', true);
-    return { id: String(result.response.id), blog: config.blog, url: `https://${config.blog}/post/${result.response.id}` };
+    const id = String(result.response.id);
+    // If the date is unavailable or Tumblr ignores it, report that accurately; never invent verification.
+    let confirmedDisplayDate: string | null = null;
+    try {
+      const fetched = await tumblrRequest('GET', `https://api.tumblr.com/v2/blog/${config.blog}/posts/${id}`, config);
+      confirmedDisplayDate = fetched.response?.date ?? null;
+    } catch { /* The post ID exists; do not create a duplicate because the read-back failed. */ }
+    return { id, blog: config.blog, url: `https://${config.blog}/post/${id}`,
+      requestedDisplayDate, confirmedDisplayDate };
   }
   // Video: publish a link to the verified preview; do not expose the private original or download a large video into serverless memory.
   if (asset.original_created_at) content.push({ type: 'text', text: `Ngày sáng tạo gốc (chủ sở hữu khai báo): ${format(asset.original_created_at)}` });
@@ -139,5 +164,7 @@ export async function publishAssetToTumblr(asset: Asset): Promise<{ id: string; 
   const endpoint = `https://api.tumblr.com/v2/blog/${config.blog}/posts`;
   const result = await tumblrRequest('POST', endpoint, config, JSON.stringify({ state: 'published', content, source_url: workUrl, tags: 'copyright,toolnet copyright,video' }));
   if (!result.response?.id) throw new TumblrApiError('Tumblr không trả về post ID. Cần kiểm tra blog trước khi đăng lại.', true);
-  return { id: String(result.response.id), blog: config.blog, url: `https://${config.blog}/post/${result.response.id}` };
+  return { id: String(result.response.id), blog: config.blog,
+    url: `https://${config.blog}/post/${result.response.id}`,
+    requestedDisplayDate: null, confirmedDisplayDate: null };
 }

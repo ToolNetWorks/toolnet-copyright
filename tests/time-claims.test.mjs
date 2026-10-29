@@ -39,7 +39,7 @@ test('public pages identify claimed and server timestamps independently', () => 
 
 test('private evidence manifest exports claimed date revisions and system times', () => {
   const evidence = source('src/app/api/assets/[id]/evidence/route.ts');
-  assert.match(evidence, /toolnet-copyright-evidence-v2/);
+  assert.match(evidence, /toolnet-copyright-evidence-v3/);
   assert.match(evidence, /time_claim_revisions: claimRevisions/);
   assert.match(evidence, /created_at: asset\.created_at, verified_at: asset\.verified_at/);
   assert.match(evidence, /original_created_at_claimed: asset\.original_created_at/);
