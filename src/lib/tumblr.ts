@@ -175,11 +175,13 @@ export async function publishAssetToTumblr(asset: Asset): Promise<{ id: string; 
     // Post the complete user-provided declaration, not a shortened caption.
     // DATE OF CREATION = owner's claim; DATE OF DECLARATION = actual statement date.
     const declaration = buildTumblrDeclaration(asset.original_created_at!, actualSubmissionTime);
-    const caption = [asset.title, `Chủ sở hữu khai báo: ${asset.owner_name}`, declaration,
-      `Ngày gửi bài Tumblr thực tế: ${actualSubmissionTime}. Ngày hiển thị quá khứ chỉ là ngày do chủ sở hữu khai báo, không chứng minh bài đã tồn tại từ ngày đó.`,
-      asset.sha256 ? `SHA-256 đã xác minh: ${asset.sha256}` : 'Đang chờ ToolNet Copyright xác minh SHA-256 và công bố hồ sơ chứng cứ.',
-      `Hồ sơ ToolNet Copyright (công khai sau khi xác minh): ${workUrl}`,
-    ].map(text => `<p>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;').replaceAll('\n', '<br>')}</p>`).join('\n');
+    const caption = declaration
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;')
+      .replaceAll('\n', '<br>');
     const form = new FormData();
     form.append('type', 'photo');
     form.append('state', 'published');

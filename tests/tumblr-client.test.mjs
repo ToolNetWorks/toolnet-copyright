@@ -63,7 +63,9 @@ test('photo uses Legacy multipart with selected GMT date, complete declaration a
     assert.equal(url, `https://api.tumblr.com/v2/blog/${fakeEnv.TUMBLR_BLOG}/posts?id=${postId}`);
     return Response.json({ response: { posts: [{ id_string: postId, date: '1997-10-19 17:00:00 GMT' }] } });
   });
+  const statementStartedAt = new Date().toISOString();
   const result = await client.publishAssetToTumblr(asset);
+  const statementEndedAt = new Date().toISOString();
   assert.equal(calls.length, 2);
   const { url, options } = calls[0];
   assert.equal(url, `https://api.tumblr.com/v2/blog/${fakeEnv.TUMBLR_BLOG}/post`);
@@ -83,15 +85,32 @@ test('photo uses Legacy multipart with selected GMT date, complete declaration a
   assert.equal((await sharp(Buffer.from(await image.arrayBuffer())).metadata()).format, 'jpeg');
   const caption = form.get('caption');
   assert.doesNotMatch(caption, /<script>/);
-  assert.match(caption, /&lt;script&gt;/);
-  const text = caption.replaceAll('<br>', '\n').replaceAll('<p>', '').replaceAll('</p>', '');
-  const sentAt = text.match(/Ngày gửi bài Tumblr thực tế: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/)[1];
-  assert.ok(text.includes(declaration.buildTumblrDeclaration(asset.original_created_at, sentAt)));
-  assert.match(text, /Đang chờ ToolNet Copyright xác minh SHA-256/);
+  const text = caption.replaceAll('<br>', '\n').replaceAll('&#39;', "'").replaceAll('&quot;', '"')
+    .replaceAll('&gt;', '>').replaceAll('&lt;', '<').replaceAll('&amp;', '&');
+  assert.ok([statementStartedAt, statementEndedAt].some(sentAt =>
+    text === declaration.buildTumblrDeclaration(asset.original_created_at, sentAt)));
+  assert.doesNotMatch(text, /Ngày gửi bài Tumblr thực tế|Đang chờ ToolNet Copyright xác minh SHA-256/);
   assert.equal(result.id, postId);
   assert.equal(result.url, `https://${fakeEnv.TUMBLR_BLOG}/post/${postId}`);
   assert.equal(result.requestedDisplayDate, asset.original_created_at);
   assert.equal(result.confirmedDisplayDate, '1997-10-19 17:00:00 GMT');
+});
+
+test('declaration-only caption escapes HTML and preserves line breaks', async t => {
+  const htmlClient = loadTypeScript('src/lib/tumblr.ts', {
+    '@/lib/tumblr-declaration': { buildTumblrDeclaration: () => '<Author> & "Owner"\nSigned: \'test\'' },
+    '@/lib/r2': { bucket: () => 'private-bucket', r2: () => ({ send: async () => ({
+      Body: (async function* () { yield preview; })(),
+    }) }) },
+  });
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    if (options.method === 'POST') {
+      assert.equal(options.body.get('caption'), '&lt;Author&gt; &amp; &quot;Owner&quot;<br>Signed: &#39;test&#39;');
+      return creationResponse();
+    }
+    return Response.json({ response: { posts: [] } });
+  });
+  await htmlClient.publishAssetToTumblr(asset);
 });
 
 test('read-back failure preserves the created post ID and never sends a second POST', async t => {

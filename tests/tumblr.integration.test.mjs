@@ -36,7 +36,8 @@ test('Tumblr posts never send private vault original and source date is clearly 
   assert.match(client, /safePreviewJpeg\(asset\.preview_key\)/);
   assert.match(client, /chủ sở hữu khai báo/);
   assert.match(client, /source_url: workUrl/);
-  assert.match(client, /Ngày gửi bài Tumblr thực tế/);
+  const route = source('src/app/api/assets/[id]/tumblr/route.ts');
+  assert.match(route, /actual_dispatch_time_recorded_by_system: new Date\(\)\.toISOString\(\)/);
   assert.doesNotMatch(client, /vault_key/);
 });
 
