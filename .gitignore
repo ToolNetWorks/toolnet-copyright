@@ -1,0 +1,25 @@
+node_modules/
+.next/
+.vercel/
+.env
+.env.local
+.env.production
+*.log
+*.tsbuildinfo
+.DS_Store
+coverage/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build
+node_modules/
+.next/
+.vercel/
+coverage/
+*.log
+*.zip

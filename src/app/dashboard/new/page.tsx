@@ -1,0 +1,6 @@
+import type { Metadata } from 'next';
+import UploadForm from '@/components/upload-form';
+import { ShieldCheck, Fingerprint } from 'lucide-react';
+export const metadata: Metadata = { title: 'Đăng ký tác phẩm', robots: { index: false } };
+export default function NewAsset() { return <><div className="dashboard-top"><div><span className="kicker">REGISTER AN ORIGINAL WORK</span><h1>Đăng ký <i>tác phẩm mới.</i></h1><p>Lưu file nguồn vào R2 và ghi nhận quyền sở hữu được khai báo tại Neon.</p></div></div><div className="edit-grid"><section className="panel padded-panel"><h2>Thông tin tác phẩm</h2><p className="form-description">Tài liệu công khai chỉ được tạo sau khi xác minh và bạn quyết định công bố.</p><UploadForm/></section><aside className="tips-card"><h3><ShieldCheck size={20}/> An toàn bằng chứng</h3><p>Giữ riêng bản gốc và hợp đồng quyền. Tránh đăng các giấy tờ có dữ liệu nhạy cảm lên trang công khai.</p><div><Fingerprint size={20}/><strong>Chuỗi sự kiện kỹ thuật</strong><span>Ngày tải lên, trạng thái xác minh và dấu vân tay file được ghi nhận trong nhật ký chỉ thêm.</span></div><small>Việc đăng ảnh/video lên website không tự chứng minh quyền tác giả. Bằng chứng pháp lý cần được đánh giá độc lập.</small></aside></div></>;
+}
