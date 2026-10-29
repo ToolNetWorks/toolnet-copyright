@@ -192,3 +192,27 @@ The claim snapshot SHA-256 is separate from the immutable original file SHA-256.
 - `GET /api/assets/:id/evidence`: administrator only; exports all revisions and timeline events.
 
 No new NPM packages or Vercel environment variables are required by v0.2.
+
+
+### Đăng ký tác phẩm với ngày sáng tạo gốc
+
+Từ v0.2.2, `/dashboard/new` cho nhập ngày sáng tạo gốc và các mốc thời gian tùy chọn ngay khi đăng ký. Hệ thống trước tiên tạo hồ sơ/upload ảnh vào R2, sau đó gọi API time claims v0.2 để ghi nhận phiên bản đầu tiên **trước khi** người quản trị thực hiện `Kiểm tra SHA-256` trên Dashboard. Không cần migration mới nếu đã chạy `db/migrations/20261029_asset_time_claims.sql`. Ngày gốc là thông tin khai báo, không thay thế thời gian máy chủ, không thể dùng để lùi dấu thời gian SHA hoặc thời điểm đăng thực tế. Nếu API ghi ngày thất bại, form cho phép thử lại mà không upload trùng.
+
+**Tumblr:** Có thể tích hợp Tumblr API qua OAuth dưới dạng kênh xuất bản **tùy chọn sau xác minh/công bố**, lưu post ID / permalink / thời gian đăng thực tế. Không coi ngày `date` backdate trên Tumblr là bằng chứng đăng từ quá khứ; không tự động backdate. Việc kết nối cần thông tin ứng dụng Tumblr và cấp quyền tài khoản qua OAuth riêng.
+
+
+## Tumblr publishing (optional)
+
+On the single ToolNet Copyright project, add the following **server-only** environment variables to the VPS `.env` and **Vercel Production** (do not commit their values):
+
+```text
+TUMBLR_OAUTH_CONSUMER_KEY=
+TUMBLR_SECRET_KEY=
+TUMBLR_TOKEN=
+TUMBLR_TOKEN_SECRET=
+TUMBLR_BLOG=diresecretscorpion.tumblr.com
+```
+
+Apply `db/migrations/20261029_tumblr_publications.sql` in Neon. Open `/dashboard` and select **Kiểm tra kết nối Tumblr**; the server calls the authenticated `/v2/user/info` endpoint without returning secrets. Only an Admin can press **Đăng lên Tumblr**, after a work has been independently uploaded, SHA-256-verified and published on ToolNet. Images: upload a reduced JPEG preview to Tumblr as an NPF native photo, not the private original. Videos: publish a link to the ToolNet public page (native video export is intentionally not implemented). Tumblr is published with the **real** publication timestamp; owner-declared original creation dates are clearly labeled in the Tumblr caption.
+
+One `tumblr_publications` row per asset prevents accidental double-publishing. If Tumblr times out or returns an ambiguous server error, the row is marked `uncertain`; check the Tumblr blog and manually reconcile before trying again. No original R2 vault objects are exposed.

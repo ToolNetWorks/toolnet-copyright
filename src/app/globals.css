@@ -28,6 +28,36 @@
 @media(max-width:760px){.claim-locked-grid{grid-template-columns:1fr}.time-claims-stack .padded-panel{padding:19px}}
 
 
+/* Registration-time source-date editor (mobile first, no second page needed). */
+.upload-step-heading{display:flex;align-items:center;gap:12px;min-width:0}
+.upload-step-heading>span{flex:none;width:35px;height:35px;border-radius:50%;background:#e6f0d9;color:#41663d;display:grid;place-items:center;font-size:12px;font-weight:800}
+.upload-step-heading>div{display:grid;gap:4px;min-width:0}
+.upload-step-heading strong{display:flex;align-items:center;gap:8px;color:#243f2b;font-size:15px;line-height:1.4}
+.upload-step-heading small{font-size:12px;color:#718174;font-weight:400;line-height:1.5}
+.upload-time-section{display:grid;gap:18px;border:1px solid #dbe6d2;background:#f7faf4;padding:23px;min-width:0}
+.upload-time-note{margin:0;padding:12px 14px;background:#e9f2e3;color:#526e56;line-height:1.7;font-size:12px}
+.upload-time-fields{display:grid;gap:16px;min-width:0}
+.upload-date-field{min-width:0;display:grid;gap:7px}
+.upload-date-field>span{font-weight:700;color:#36503c;font-size:13px}
+.upload-date-field>span small{color:#889789;font-weight:400}
+.upload-form .upload-time-section input[type=datetime-local]{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:50px;font-size:16px;background:#fff;color:#253b2a;border:1px solid #c9d9c6;border-radius:6px;padding:11px;overflow:hidden}
+.upload-date-field>small{color:#798c7b;font-size:11px;line-height:1.6}
+.upload-more-dates{border:1px solid #cbdcc6;background:#fff;color:#375a37;text-align:left;font-size:12px;font-weight:700;padding:12px 14px;border-radius:5px;line-height:1.5}
+.upload-more-dates:hover{background:#edf4e8}
+.upload-time-section .checkbox-line{line-height:1.7}
+.upload-form .helper a{color:#386b32;text-decoration:underline}
+@media(max-width:1100px){.upload-time-section .form-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){.upload-time-section{padding:16px 13px}.upload-step-heading strong{font-size:14px}.upload-form>.btn{width:100%;min-height:50px}.upload-time-section .form-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Tumblr integration status (admin-only controls). */
+.tumblr-panel{background:#f1f6ed;border:1px solid #d8e4d2;padding:18px 22px;display:flex;gap:15px;align-items:center;flex-wrap:wrap;margin-bottom:25px}
+.tumblr-panel>div{flex:1;min-width:190px}
+.tumblr-panel strong{font-size:13px;color:#2f4b33}
+.tumblr-panel p{font-size:11px;color:#738475;line-height:1.6;margin:6px 0 0}
+.tumblr-panel .tumblr-status-ok{color:#366c39;font-weight:700;flex-basis:100%}
+.tumblr-panel .danger-text{flex-basis:100%;color:#a53630}
+@media(max-width:760px){.tumblr-panel{padding:16px}.tumblr-panel button{width:100%}}
+
 /* ToolNet Copyright v0.2.1: usable time-claim form on iOS Safari and tablet.
    Browsers requesting a desktop page may have a 980px CSS viewport, so
    the workspace must reflow before the legacy 760px breakpoint. */

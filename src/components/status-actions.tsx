@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
-export default function StatusActions({ id, status, published, isVideo, hasPreview }: { id: string; status: string; published: boolean; isVideo: boolean; hasPreview: boolean }) {
+import { CheckCircle2, ShieldCheck, Loader2, ExternalLink } from 'lucide-react';
+export default function StatusActions({ id, status, published, isVideo, hasPreview, tumblrStatus, tumblrUrl }: { id: string; status: string; published: boolean; isVideo: boolean; hasPreview: boolean; tumblrStatus?: string | null; tumblrUrl?: string | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function send(action: string) {
@@ -36,6 +36,10 @@ export default function StatusActions({ id, status, published, isVideo, hasPrevi
     {!isVideo && status === 'verified' && !hasPreview && <span className="danger-text">Thiếu bản xem trước, không thể công bố</span>}
     {isVideo && status === 'verified' && !hasPreview && <label className="btn btn-muted btn-small">Thêm preview video<input type="file" accept="video/mp4,video/webm" style={{display:'none'}} onChange={e => {void addPreview(e.target.files?.[0]);}}/></label>}
     {status === 'verified' && hasPreview && !published && <button disabled={busy} className="btn btn-small" onClick={() => send('publish')}>{busy ? <Loader2 size={14} className="spin"/> : <CheckCircle2 size={14}/>} Công bố</button>}
+    {published && !tumblrStatus && <button disabled={busy} className="btn btn-muted btn-small" onClick={() => send('tumblr')}>{busy ? <Loader2 size={14} className="spin"/> : <ExternalLink size={14}/>} Đăng lên Tumblr</button>}
+    {published && tumblrStatus === 'failed' && <button disabled={busy} className="btn btn-muted btn-small" onClick={() => send('tumblr')}>Thử đăng lại Tumblr</button>}
+    {tumblrStatus === 'published' && tumblrUrl && <a className="btn btn-muted btn-small" href={tumblrUrl} target="_blank" rel="noopener noreferrer">Xem bài Tumblr <ExternalLink size={14}/></a>}
+    {(tumblrStatus === 'publishing' || tumblrStatus === 'uncertain') && <span className="status-pill">Tumblr: cần kiểm tra, tránh đăng trùng</span>}
     {status === 'verified' && <a className="btn btn-muted btn-small" href={`/api/assets/${id}/download`}>Tải bản gốc</a>}
     <a className="btn btn-muted btn-small" href={`/api/assets/${id}/evidence`}>Chứng cứ JSON</a>
     {error && <span className="danger-text" role="alert">{error}</span>}
