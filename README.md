@@ -210,12 +210,14 @@ TUMBLR_OAUTH_CONSUMER_KEY=
 TUMBLR_SECRET_KEY=
 TUMBLR_TOKEN=
 TUMBLR_TOKEN_SECRET=
-TUMBLR_BLOG=diresecretscorpion.tumblr.com
+TUMBLR_BLOG=copyright-toolnet.tumblr.com
 ```
 
-Apply `db/migrations/20261029_tumblr_publications.sql` in Neon. Open `/dashboard` and select **Kiểm tra kết nối Tumblr**; the server calls the authenticated `/v2/user/info` endpoint without returning secrets. Only an Admin can press **Đăng lên Tumblr**, after a work has been independently uploaded, SHA-256-verified and published on ToolNet. Images: upload a reduced JPEG preview to Tumblr as an NPF native photo, not the private original. Videos: publish a link to the ToolNet public page (native video export is intentionally not implemented). Tumblr dates may be backdated for presentation in v0.4; origin date is always owner-declared and the actual API submission time remains separate and visible in evidence records.
+Apply `db/migrations/20261029_tumblr_publications.sql` in Neon. Open `/dashboard` and select **Kiểm tra kết nối Tumblr**; the server calls the authenticated `/v2/user/info` endpoint without returning secrets. Only an Admin can publish to Tumblr. In v0.4, photos are posted after upload and saving the claimed date, before user-triggered SHA-256 verification. Images: upload a reduced JPEG preview through the Legacy Photo API (`POST /v2/blog/{blog}/post`), with multipart `type=photo`, `data`, the complete declaration in `caption`, and the selected date converted to GMT in `date`. Videos retain NPF link publishing after verification and publication on ToolNet (native video export is intentionally not implemented). Origin dates are owner-declared; actual API submission times remain separate and visible in evidence records.
 
 One `tumblr_publications` row per asset prevents accidental double-publishing. If Tumblr times out or returns an ambiguous server error, the row is marked `uncertain`; check the Tumblr blog and manually reconcile before trying again. No original R2 vault objects are exposed.
+
+Tumblr API failures include the HTTP status, differing `meta.status`, and available `errors`/`meta.msg` details; credentials are redacted. Existing Post IDs prevent redispatch even if a row has a failed status. A failure to read the display date after creation preserves the Post ID and URL and never triggers another post.
 
 
 ### Owner-declared date → Tumblr → SHA-256 (v0.4)

@@ -5,7 +5,7 @@ import { uuid } from '@/lib/validation';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-type TumblrRow = { status: string; tumblr_url: string | null; blog: string };
+type TumblrRow = { status: string; tumblr_post_id: string | null; tumblr_url: string | null; blog: string };
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return deny();
@@ -34,16 +34,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       VALUES(${asset.id}::uuid,${config.blog},'publishing')
       ON CONFLICT (asset_id) DO UPDATE SET status='publishing',blog=${config.blog},
         requested_at=now(),updated_at=now(),last_error=NULL
-      WHERE tumblr_publications.status='failed'
+      WHERE tumblr_publications.status='failed' AND tumblr_publications.tumblr_post_id IS NULL
       RETURNING asset_id`;
   } catch (error) {
     console.error('Tumblr reservation error:', error instanceof Error ? error.message : 'unknown');
     return Response.json({ error: 'Chưa thể mở phiên đăng Tumblr. Kiểm tra migration.' }, { status: 503 });
   }
   if (!locked.length) {
-    const rows = await sql`SELECT status,tumblr_url,blog FROM tumblr_publications WHERE asset_id=${asset.id}::uuid`;
+    const rows = await sql`SELECT status,tumblr_post_id,tumblr_url,blog FROM tumblr_publications WHERE asset_id=${asset.id}::uuid`;
     const previous = rows[0] as TumblrRow | undefined;
-    if (previous?.status === 'published') return Response.json({ success: true, alreadyPublished: true, url: previous.tumblr_url });
+    if (previous?.tumblr_post_id || previous?.status === 'published') return Response.json({
+      success: true, alreadyPublished: true, id: previous.tumblr_post_id,
+      url: previous.tumblr_url || (previous.tumblr_post_id ? `https://${previous.blog}/post/${previous.tumblr_post_id}` : null),
+    });
     return Response.json({ error: 'Bài Tumblr đang xử lý hoặc cần đối chiếu thủ công để tránh đăng trùng.' }, { status: 409 });
   }
   try {
@@ -56,7 +59,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       actual_dispatch_time_recorded_by_system: new Date().toISOString(),
       disclaimer: 'Backdated display is not evidence of historical publication.' })
       .catch(() => console.warn('Tumblr post stored but evidence event needs reconciliation:', asset.id));
-    return Response.json({ success: true, url: result.url, displayedAtRequested: result.requestedDisplayDate,
+    return Response.json({ success: true, id: result.id, url: result.url, displayedAtRequested: result.requestedDisplayDate,
       displayedAtConfirmed: result.confirmedDisplayDate });
   } catch (error) {
     const certainRejection = error instanceof TumblrApiError && !error.retryable;

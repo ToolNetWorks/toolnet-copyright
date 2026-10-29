@@ -18,7 +18,7 @@ test('Tumblr OAuth only uses server-side credentials and never stores secrets in
     assert.ok(client.includes(`process.env.${name}`));
   }
   assert.match(client, /createHmac\('sha1'/);
-  assert.match(client, /date: requestedDisplayDate/);
+  assert.match(client, /form\.append\('date', new Date\(requestedDisplayDate!/);
 });
 
 test('tumblr pre-verification photos require claimed source date and avoid duplicate dispatch', () => {
