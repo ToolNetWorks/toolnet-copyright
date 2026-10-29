@@ -96,3 +96,69 @@
   .dashboard .claim-locked-grid{grid-template-columns:minmax(0,1fr)}
   .dashboard .time-claim-form label{font-size:13px}
 }
+
+/* TOOLNET_SIDEBAR_TOGGLE_V1 */
+.sidebar-toggle-heading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.sidebar-collapse-btn {
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  flex:none;
+  border:1px solid #526c59;
+  border-radius:6px;
+  background:#203d2d;
+  color:#d9edd7;
+}
+.sidebar-collapse-btn:hover {
+  background:#315940;
+}
+.sidebar-collapse-btn:focus-visible {
+  outline:2px solid #c7ed54;
+  outline-offset:2px;
+}
+@media(min-width:1101px) {
+  .dashboard {
+    transition:grid-template-columns .2s ease;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) {
+    grid-template-columns:74px minmax(0,1fr);
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .sidebar {
+    padding:24px 10px;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .sidebar-toggle-heading {
+    justify-content:center;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .sidebar-caption {
+    display:none;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .sidebar-menu a {
+    justify-content:center;
+    gap:0;
+    padding:13px 0;
+    font-size:0;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .sidebar-security {
+    justify-content:center;
+    padding:12px 0;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .sidebar-security > div {
+    display:none;
+  }
+  .dashboard:has(.sidebar-collapse-btn[aria-expanded="false"]) .simple-button {
+    justify-content:center;
+    padding:12px 0;
+    font-size:0;
+  }
+}
+@media(max-width:1100px) {
+  .sidebar-toggle-heading {
+    display:none;
+  }
+}
