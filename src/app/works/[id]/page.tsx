@@ -49,28 +49,31 @@ export default async function Work({ params }: Context) {
       </div>
     </header>
     <div className="certificate-shell">
-      <article className="certificate" aria-labelledby="certificate-title">
+      <article className="certificate" aria-labelledby="certificate-document-title">
         <header className="certificate-header">
+          <p className="certificate-issuer">ToolNet Copyright</p>
+          <h1 id="certificate-document-title">Hồ sơ quyền tác giả</h1>
+          <p className="certificate-subtitle">Copyright Ownership Record</p>
+          <div className="certificate-record"><span>Mã hồ sơ <strong>{asset.id.slice(0, 8).toUpperCase()}</strong></span><span>Mã định danh: {asset.id}</span></div>
           <div className="certificate-status" data-integrity={integrityVerified ? 'verified' : 'pending'}>
-            <span className="certificate-status-icon">{integrityVerified ? <ShieldCheck size={19} aria-hidden="true"/> : <Clock3 size={19} aria-hidden="true"/>}</span>
-            <div><span className="certificate-badge-brand">TOOLNET COPYRIGHT</span><strong>{status}</strong></div>
+            <span className="certificate-status-icon">{integrityVerified ? <ShieldCheck size={18} aria-hidden="true"/> : <Clock3 size={18} aria-hidden="true"/>}</span>
+            <strong>{status}</strong>
           </div>
-          <div className="certificate-record"><span>Hồ sơ số {asset.id.slice(0, 8).toUpperCase()}</span><span>Document ID: {asset.id}</span></div>
         </header>
 
         <section aria-labelledby="work-info-heading">
-          <h2 id="work-info-heading" className="certificate-section-heading">Work Information</h2>
+          <h2 id="work-info-heading" className="certificate-section-heading">Thông tin tác phẩm</h2>
           <table className="certificate-table" aria-labelledby="work-info-heading"><tbody>
-            <RecordRow label="Work Title"><h1 id="certificate-title">{asset.title}</h1></RecordRow>
-            <RecordRow label="Publication Status">{published ? 'Đã công bố trên ToolNet' : 'Đã đăng Tumblr · Chưa công bố trên ToolNet'}</RecordRow>
-            <RecordRow label="Owner" className="certificate-owner">{asset.owner_name}</RecordRow>
-            <RecordRow label="Ownership Basis">{ownership}</RecordRow>
-            <RecordRow label="Original Creation Date"><span>{formatViDate(asset.original_created_at)}</span><small className="certificate-field-note">Ngày sáng tạo gốc (chủ sở hữu khai báo)</small></RecordRow>
+            <RecordRow label="Tên tác phẩm"><p id="certificate-title" className="certificate-work-title">{asset.title}</p></RecordRow>
+            <RecordRow label="Trạng thái công bố">{published ? 'Đã công bố trên ToolNet' : 'Đã đăng Tumblr · Chưa công bố trên ToolNet'}</RecordRow>
+            <RecordRow label="Chủ sở hữu khai báo" className="certificate-owner">{asset.owner_name}</RecordRow>
+            <RecordRow label="Cơ sở quyền sở hữu">{ownership}</RecordRow>
+            <RecordRow label="Ngày sáng tạo khai báo"><span>{formatViDate(asset.original_created_at)}</span><small className="certificate-field-note">Ngày sáng tạo gốc (chủ sở hữu khai báo)</small></RecordRow>
             <RecordRow label="Ngày tải lên ToolNet (hệ thống ghi nhận)">{formatViDate(asset.created_at)}</RecordRow>
-            <RecordRow label="Work Type">{asset.media_type === 'image' ? 'Hình ảnh (Photograph)' : 'Video'}</RecordRow>
+            <RecordRow label="Loại tác phẩm">{asset.media_type === 'image' ? 'Hình ảnh (Photograph)' : 'Video'}</RecordRow>
             <RecordRow label="Permanent URL"><a className="certificate-url" href={permanentUrl}>{permanentUrl}</a></RecordRow>
-            {tumblr && <RecordRow label="External Publication"><a href={tumblr.tumblr_url} target="_blank" rel="noopener noreferrer">Bài đăng Tumblr ↗</a></RecordRow>}
-            <RecordRow label="Preview">
+            {tumblr && <RecordRow label="Công bố bên ngoài"><a href={tumblr.tumblr_url} target="_blank" rel="noopener noreferrer">Bài đăng Tumblr ↗</a></RecordRow>}
+            <RecordRow label="Bản xem trước">
               <figure className="certificate-preview" aria-label="Bản xem trước tác phẩm">
                 {previewKey ? asset.media_type === 'image'
                   ? <Image src={`/api/works/${asset.id}/preview`} alt={`Bản xem trước: ${asset.title}`} width={1200} height={900} unoptimized className="certificate-preview-image"/>
@@ -83,7 +86,7 @@ export default async function Work({ params }: Context) {
         </section>
 
         <section className="certificate-evidence" aria-labelledby="integrity-heading">
-          <h2 id="integrity-heading" className="certificate-section-heading">File Integrity &amp; Technical Evidence</h2>
+          <h2 id="integrity-heading" className="certificate-section-heading">Xác minh tệp &amp; chứng cứ kỹ thuật</h2>
           <table className="certificate-table" aria-labelledby="integrity-heading"><tbody>
             <RecordRow label="SHA-256">{integrityVerified ? <code className="certificate-hash">{asset.sha256}</code> : <span className="certificate-muted">Chưa có kết quả đối chiếu tệp.</span>}</RecordRow>
             {integrityVerified && <RecordRow label="Ngày xác minh file (hệ thống ghi nhận)">{formatViDate(asset.verified_at)}</RecordRow>}
@@ -93,14 +96,15 @@ export default async function Work({ params }: Context) {
         </section>
 
         <section className="certificate-declaration" aria-labelledby="ownership-heading">
-          <h2 id="ownership-heading">Copyright Ownership Declaration</h2>
+          <h2 id="ownership-heading">Tuyên bố quyền sở hữu</h2>
           <p>Chủ sở hữu khai báo quyền đối với tác phẩm theo cơ sở: <strong>{ownership.toLowerCase()}</strong>.</p>
           {published && asset.description && <p className="certificate-description">{asset.description}</p>}
         </section>
 
         <section className="certificate-permalink" aria-labelledby="permalink-heading">
           <a className="certificate-qr" href={permanentUrl} aria-label="Mở Permanent URL của tác phẩm"><Image src={qr} width={110} height={110} alt="QR code mở hồ sơ tác phẩm" unoptimized/></a>
-          <div className="certificate-permalink-content"><h2 id="permalink-heading">Permanent Link &amp; Record</h2><a className="certificate-link-display" href={permanentUrl}>{permanentUrl}</a><p>Quét QR để mở bản ghi này trên ToolNet Copyright.</p><CertificateActions url={permanentUrl} title={asset.title}/></div>
+          <div className="certificate-permalink-content"><h2 id="permalink-heading">Liên kết hồ sơ</h2><a className="certificate-link-display" href={permanentUrl}>{permanentUrl}</a><p>Quét QR để mở bản ghi này trên ToolNet Copyright.</p></div>
+          <CertificateActions url={permanentUrl} title={asset.title}/>
         </section>
 
         <footer className="certificate-footer">
