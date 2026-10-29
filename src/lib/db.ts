@@ -11,6 +11,14 @@ export type Asset = {
   size_bytes: number; staging_key: string; vault_key: string | null; preview_key: string | null; preview_sha256: string | null;
   sha256: string | null; status: 'upload_pending' | 'pending_verification' | 'verified' | 'verification_failed';
   is_public: boolean; published_at: string | null; created_at: string; verified_at: string | null;
+  original_created_at: string | null;
+  original_captured_at: string | null;
+  original_published_at: string | null;
+  copyright_effective_at: string | null;
+  time_claim_source: string | null;
+  time_claim_reference: string | null;
+  time_claim_version: number;
+  time_claim_updated_at: string | null;
 };
 
 export type CopyrightCase = {

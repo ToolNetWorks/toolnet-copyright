@@ -156,3 +156,39 @@ All secrets must remain server-only. Only `NEXT_PUBLIC_SITE_URL` has the `NEXT_P
 ## License
 
 Private source project. No open-source license is granted until the owner chooses one.
+
+## v0.2 — Owner-declared timeline and revisions (2026-10-29)
+
+This release keeps original file hashes, R2 keys, upload timestamps, SHA-256 verification timestamps and ToolNet publication timestamps unchanged. It adds **owner-declared** dates with revision history; it does not backdate technical evidence or provide legal certification.
+
+### Upgrade the existing Neon database first
+
+This is an **additive, idempotent migration**; it does not replace `db/schema.sql` or delete rows. Back up before applying in production.
+
+```bash
+cd /root/toolnet-copyright
+# DATABASE_URL is from your existing private VPS .env or .env.local (never output it).
+# Use a protected shell process with DATABASE_URL exported for this command.
+psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 \
+  -f db/migrations/20261029_asset_time_claims.sql
+```
+
+**Important:** Run the database migration **before** deploying code v0.2. Previous code continues operating with the new columns. To undo the application rollout, redeploy the previous commit; keep the new DB columns and evidence history intact.
+
+### How to use
+
+1. Admin Dashboard → select **Ngày gốc** for an existing asset.
+2. Enter one or more owner-declared dates, in Vietnam time (UTC+07:00): original creation, capture, earliest publication, or rights-effective date.
+3. Choose a truthful claimed evidence source, optionally provide a document identifier or URL, and explain the amendment (10+ characters).
+4. Confirm the declaration and save. The server creates a new revision, SHA-256 hash of the claimed snapshot, and append-only audit event together in a Neon transaction.
+5. Admin can view the full revision history and export it in private **Chứng cứ JSON** format v2. Public work pages label original dates as **owner-declared** and retain separately labeled server upload, verification and platform-publication dates.
+
+The claim snapshot SHA-256 is separate from the immutable original file SHA-256. Neither proves independently when the work was actually created. The system database timestamps are **not** RFC 3161 independent timestamps. Database administrators can still change underlying records with elevated privileges; use independent retention, backups and externally trusted timestamps for stronger evidentiary guarantees.
+
+### API
+
+- `GET /api/assets/:id/time-claims`: administrator only; returns asset + most recent 100 claim revisions.
+- `POST /api/assets/:id/time-claims`: administrator only + same-origin check, strictly validated dates and optimistic concurrency. Requires `expectedVersion`, four nullable ISO datetimes with offsets, `timeClaimSource`, `timeClaimReference`, `correctionReason`, `acknowledged: true`.
+- `GET /api/assets/:id/evidence`: administrator only; exports all revisions and timeline events.
+
+No new NPM packages or Vercel environment variables are required by v0.2.
