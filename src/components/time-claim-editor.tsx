@@ -109,11 +109,13 @@ export default function TimeClaimEditor({ asset, history }: { asset: EditableTim
     <section className="panel padded-panel">
       <h2><CalendarClock size={20}/> Thời gian gốc do chủ sở hữu khai báo</h2>
       <p className="form-description">Bạn có thể đính chính các mốc khai báo. Thời gian dưới đây được nhập theo giờ Việt Nam (UTC+07:00); thời gian thực của hệ thống được lưu riêng và không thể thay đổi ở form này.</p>
+      <div className="time-claim-help" role="note"><strong>Cách nhập:</strong> Chỉ điền những ngày bạn thực sự biết; các ô ngày đều không bắt buộc. Chạm vào ô để chọn <strong>ngày và giờ</strong>. Nếu chưa biết ngày công bố hoặc ngày có quyền, hãy để trống. Ngày khai báo không phải dấu thời gian độc lập.</div>
       <form className="time-claim-form" onSubmit={save}>
         <div className="form-grid">
-          {DATE_FIELDS.map(field => <label key={field.key}>
-            {field.label}
-            <input type="datetime-local" value={dates[field.key]}
+          {DATE_FIELDS.map(field => <label key={field.key} className="time-claim-date-field">
+            <span>{field.label} <em>(tùy chọn)</em></span>
+            <input className="time-claim-date-input" type="datetime-local" lang="vi-VN" aria-label={field.label}
+              value={dates[field.key]}
               onChange={event => setDates(previous => ({ ...previous, [field.key]: event.target.value }))}/>
             <small>{field.hint}</small>
           </label>)}
@@ -129,7 +131,7 @@ export default function TimeClaimEditor({ asset, history }: { asset: EditableTim
               placeholder="URL công bố cũ hoặc mã hồ sơ gốc"/>
           </label>
         </div>
-        <label>Lý do thêm hoặc đính chính thời gian
+        <label>Lý do thêm hoặc đính chính thời gian <span className="time-claim-required">(bắt buộc, ít nhất 10 ký tự)</span>
           <textarea required rows={3} minLength={10} maxLength={1000} value={reason}
             onChange={event => setReason(event.target.value)}
             placeholder="Ví dụ: Đối chiếu ngày chụp với file RAW / lịch sử sáng tạo..."/>
@@ -143,6 +145,7 @@ export default function TimeClaimEditor({ asset, history }: { asset: EditableTim
         <button className="btn" type="submit" disabled={busy || !acknowledged || reason.trim().length < 10}>
           {busy ? <><Loader2 className="spin" size={17}/> Đang lưu…</> : <><CheckCircle2 size={17}/> Lưu phiên bản thời gian mới</>}
         </button>
+        {(!acknowledged || reason.trim().length < 10) && <p className="time-claim-save-hint">Để bật nút Lưu, nhập lý do từ 10 ký tự và tích ô xác nhận phía trên.</p>}
       </form>
     </section>
 

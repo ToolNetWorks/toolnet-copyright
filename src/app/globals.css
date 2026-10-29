@@ -26,3 +26,43 @@
 .claim-sha{margin-top:12px;display:grid;gap:7px;padding:11px;background:#edf4e8;color:#567053}
 .claim-sha span{font-size:10px;font-weight:700}.claim-sha code,.claim-break{word-break:break-all;font-size:10px;line-height:1.6}
 @media(max-width:760px){.claim-locked-grid{grid-template-columns:1fr}.time-claims-stack .padded-panel{padding:19px}}
+
+
+/* ToolNet Copyright v0.2.1: usable time-claim form on iOS Safari and tablet.
+   Browsers requesting a desktop page may have a 980px CSS viewport, so
+   the workspace must reflow before the legacy 760px breakpoint. */
+.time-claim-help{margin:18px 0 6px;padding:14px 16px;background:#f0f5e9;border-left:3px solid #89aa69;color:#415b45;font-size:12px;line-height:1.8}
+.time-claim-help strong{color:#27482d}
+.time-claim-form .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.time-claim-form .form-grid>label,.time-claim-date-field{min-width:0}
+.time-claim-date-field>span{line-height:1.5}
+.time-claim-date-field em{font-style:normal;color:#829387;font-size:11px;font-weight:400;white-space:nowrap}
+.time-claim-form .time-claim-date-input{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:50px;font-size:16px;line-height:1.4;color:#243d2b;background:#fbfdf9;overflow:hidden}
+.time-claim-required{font-size:11px;font-weight:500;color:#9a6136}
+.time-claim-save-hint{font-size:12px;color:#78867b;line-height:1.6;margin:-8px 0 0}
+.time-claim-form textarea{min-width:0;max-width:100%;min-height:95px}
+.time-claim-form select,.time-claim-form input:not([type=checkbox]){min-width:0;max-width:100%}
+@media (max-width:1100px){
+  .dashboard{display:block;min-width:0}
+  .dashboard .sidebar{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;min-width:0}
+  .dashboard .sidebar>div:first-child{min-width:0;flex:1}
+  .dashboard .sidebar-caption,.dashboard .sidebar-security{display:none}
+  .dashboard .sidebar-menu{display:flex;gap:6px;margin:0;overflow-x:auto;max-width:100%;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .dashboard .sidebar-menu a{flex:none;white-space:nowrap;padding:10px;font-size:12px}
+  .dashboard .sidebar-end{display:block;flex:none;margin:0}
+  .dashboard .sidebar-end .simple-button{padding:10px 8px;white-space:nowrap}
+  .dashboard .dashboard-body{min-width:0;padding:30px clamp(15px,4vw,35px) 70px}
+  .dashboard .dashboard-top h1{font-size:clamp(29px,4vw,39px)}
+  .dashboard .time-claims-stack{max-width:780px;margin:0 auto;min-width:0}
+  .dashboard .time-claim-form .form-grid{grid-template-columns:minmax(0,1fr);gap:18px}
+}
+@media (max-width:760px){
+  .dashboard .sidebar{padding:10px 12px;gap:5px}
+  .dashboard .sidebar-menu a{padding:10px 7px;font-size:11px}
+  .dashboard .sidebar-end .simple-button{padding:9px 4px;font-size:11px}
+  .dashboard .dashboard-body{padding:24px 14px 65px}
+  .dashboard .time-claims-stack .padded-panel{padding:18px 15px}
+  .dashboard .time-claim-form .btn{width:100%;min-height:49px;justify-self:stretch}
+  .dashboard .claim-locked-grid{grid-template-columns:minmax(0,1fr)}
+  .dashboard .time-claim-form label{font-size:13px}
+}
