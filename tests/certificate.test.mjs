@@ -114,10 +114,14 @@ test('pending certificate never displays VERIFIED or a hash and omits private re
   assert.doesNotMatch(html,/License information|Logo và chữ ký|Chưa được cung cấp trong hồ sơ/);
   assert.equal((html.match(/class="certificate-status"/g)??[]).length,1);
   assert.equal((html.match(/Declared Owner/g)??[]).length,1);
-  assert.ok(html.indexOf('certificate-title-block')<html.indexOf('class="certificate-status"'));
-  assert.ok(html.indexOf('class="certificate-status"')<html.indexOf('class="certificate-preview"'));
-  assert.ok(html.indexOf('class="certificate-preview"')<html.indexOf('class="certificate-owner"'));
-  assert.ok(html.indexOf('class="certificate-owner"')<html.indexOf('class="certificate-permalink"'));
+  assert.match(html, /Work Information/);
+  assert.match(html, /File Integrity &amp; Technical Evidence/);
+  assert.doesNotMatch(html, /DigiCert|SHA3-256|SHA-512|PDQ Hash|RFC 3161|Ed25519|C2PA|Active Protection|All Rights Reserved|\/verify\//);
+  assert.ok(html.indexOf('class="certificate-status"')<html.indexOf('id="work-info-heading"'));
+  assert.ok(html.indexOf('class="certificate-preview"')<html.indexOf('class="certificate-evidence"'));
+  assert.ok(html.indexOf('class="certificate-evidence"')<html.indexOf('class="certificate-declaration"'));
+  assert.match(html, /Original Creation Date/);
+  assert.match(html, /Ngày sáng tạo gốc \(chủ sở hữu khai báo\)/);
   const permanent=model().permanentWorkUrl(id);
   assert.equal(qrUrl(),permanent);
   assert.match(html,/data:image\/png;base64,/);

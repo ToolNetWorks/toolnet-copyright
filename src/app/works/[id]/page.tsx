@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import QRCode from 'qrcode';
-import { ArrowLeft, Clock3, ExternalLink, Fingerprint, ImageIcon, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Clock3, ImageIcon, ShieldCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import CertificateActions from '@/components/certificate-actions';
 import { getPublicWork, permanentWorkUrl } from '@/lib/public-work';
@@ -23,6 +24,10 @@ export async function generateMetadata({ params }: Context): Promise<Metadata> {
   };
 }
 
+function RecordRow({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+  return <tr className={className}><th scope="row">{label}</th><td>{children}</td></tr>;
+}
+
 export default async function Work({ params }: Context) {
   const work = await getPublicWork((await params).id);
   if (!work) notFound();
@@ -34,101 +39,75 @@ export default async function Work({ params }: Context) {
   });
   const ownership = asset.owner_basis === 'original_creator' ? 'Tác giả / chủ sở hữu gốc'
     : asset.owner_basis === 'rights_transfer' ? 'Chuyển giao quyền' : 'Quyền sử dụng độc quyền';
-  const status = published ? 'Đã xác minh & công bố'
-    : integrityVerified ? 'Đã xác minh SHA-256' : 'Chờ xác minh SHA-256';
+  const status = integrityVerified ? 'Đã xác minh SHA-256' : 'Chờ xác minh SHA-256';
 
   return <main className="certificate-page">
+    <header className="certificate-site-header">
+      <div className="certificate-site-header-inner">
+        <Link href="/" className="certificate-brand">TOOLNET COPYRIGHT <span>Digital Ownership Registry</span></Link>
+        <nav aria-label="Điều hướng hồ sơ"><Link href="/">Trang chủ</Link><Link href="/dashboard">Tài khoản</Link><Link href="/methodology">Phương pháp</Link></nav>
+      </div>
+    </header>
     <div className="certificate-shell">
-      <Link href="/registry" className="certificate-back"><ArrowLeft size={14} aria-hidden="true"/> Kho tác phẩm</Link>
       <article className="certificate" aria-labelledby="certificate-title">
-        <div className="certificate-inner">
-          <header className="certificate-header">
-            <Link href="/" className="certificate-brand" aria-label="ToolNet Copyright — Trang chủ">
-              <Fingerprint size={29} strokeWidth={1.6} aria-hidden="true"/>
-              <span>TOOLNET<strong>COPYRIGHT</strong></span>
-            </Link>
-            <div className="certificate-record"><span>Mã hồ sơ</span><strong>{asset.id.slice(0, 8).toUpperCase()}</strong></div>
-          </header>
-
-          <div className="certificate-layout">
-            <section className="certificate-title-block">
-              <span className="certificate-label">Tác phẩm</span>
-              <h1 id="certificate-title">{asset.title}</h1>
-            </section>
-
-            <aside className="certificate-protection" aria-label="Trạng thái hồ sơ">
-              <div className="certificate-status" data-integrity={integrityVerified ? 'verified' : 'pending'}>
-                {integrityVerified ? <ShieldCheck size={39} strokeWidth={1.5} aria-hidden="true"/> : <Clock3 size={39} strokeWidth={1.5} aria-hidden="true"/>}
-                <span className="certificate-badge-brand">TOOLNET COPYRIGHT</span>
-                <strong>{status}</strong>
-              </div>
-              <dl className="certificate-protection-info">
-                <div><dt>Hồ sơ</dt><dd>{published ? 'Đã công bố trên ToolNet' : 'Đã đăng Tumblr'}</dd></div>
-                <div><dt>Lưu trữ</dt><dd><LockKeyhole size={13} aria-hidden="true"/> Bản gốc riêng tư</dd></div>
-              </dl>
-            </aside>
-
-            <figure className="certificate-preview" aria-label="Bản xem trước tác phẩm">
-              {previewKey ? asset.media_type === 'image'
-                ? <Image src={`/api/works/${asset.id}/preview`} alt={`Bản xem trước: ${asset.title}`} width={1200} height={900} unoptimized className="certificate-preview-image"/>
-                : <video controls preload="metadata" src={`/api/works/${asset.id}/preview`} aria-label={`Bản xem trước video: ${asset.title}`}/>
-                : <div className="certificate-no-preview"><ImageIcon size={28} strokeWidth={1.5} aria-hidden="true"/><span>Chưa có bản xem trước.</span></div>}
-            </figure>
-
-            <section className="certificate-owner" aria-label="Chủ sở hữu và ngày sáng tạo">
-              <dl>
-                <div><dt>Chủ sở hữu khai báo</dt><dd>{asset.owner_name}</dd></div>
-                <div><dt>Ngày sáng tạo gốc (chủ sở hữu khai báo)</dt><dd>{formatViDate(asset.original_created_at)}</dd></div>
-              </dl>
-            </section>
-
-            <aside className="certificate-permalink" aria-label="Liên kết và định danh">
-              <div className="certificate-link-block">
-                <div><h2>Permanent URL</h2><a className="certificate-url" href={permanentUrl}>{permanentUrl}</a></div>
-                <a className="certificate-qr" href={permanentUrl} aria-label="Mở Permanent URL của tác phẩm">
-                  <Image src={qr} width={136} height={136} alt="QR code mở hồ sơ tác phẩm" unoptimized/>
-                </a>
-              </div>
-              <dl className="certificate-identity"><div><dt>UUID</dt><dd>{asset.id}</dd></div><div><dt>Loại tác phẩm</dt><dd>{asset.media_type === 'image' ? 'Hình ảnh' : 'Video'}</dd></div></dl>
-            </aside>
+        <header className="certificate-header">
+          <div className="certificate-status" data-integrity={integrityVerified ? 'verified' : 'pending'}>
+            <span className="certificate-status-icon">{integrityVerified ? <ShieldCheck size={19} aria-hidden="true"/> : <Clock3 size={19} aria-hidden="true"/>}</span>
+            <div><span className="certificate-badge-brand">TOOLNET COPYRIGHT</span><strong>{status}</strong></div>
           </div>
+          <div className="certificate-record"><span>Hồ sơ số {asset.id.slice(0, 8).toUpperCase()}</span><span>Document ID: {asset.id}</span></div>
+        </header>
 
-          <section className="certificate-declaration" aria-labelledby="ownership-heading">
-            <h2 id="ownership-heading">Ownership Declaration</h2>
-            <p>Chủ sở hữu khai báo quyền đối với tác phẩm theo cơ sở: <strong>{ownership.toLowerCase()}</strong>.</p>
-            {published && asset.description && <p className="certificate-description">{asset.description}</p>}
-          </section>
+        <section aria-labelledby="work-info-heading">
+          <h2 id="work-info-heading" className="certificate-section-heading">Work Information</h2>
+          <table className="certificate-table" aria-labelledby="work-info-heading"><tbody>
+            <RecordRow label="Work Title"><h1 id="certificate-title">{asset.title}</h1></RecordRow>
+            <RecordRow label="Publication Status">{published ? 'Đã công bố trên ToolNet' : 'Đã đăng Tumblr · Chưa công bố trên ToolNet'}</RecordRow>
+            <RecordRow label="Owner" className="certificate-owner">{asset.owner_name}</RecordRow>
+            <RecordRow label="Ownership Basis">{ownership}</RecordRow>
+            <RecordRow label="Original Creation Date"><span>{formatViDate(asset.original_created_at)}</span><small className="certificate-field-note">Ngày sáng tạo gốc (chủ sở hữu khai báo)</small></RecordRow>
+            <RecordRow label="Ngày tải lên ToolNet (hệ thống ghi nhận)">{formatViDate(asset.created_at)}</RecordRow>
+            <RecordRow label="Work Type">{asset.media_type === 'image' ? 'Hình ảnh (Photograph)' : 'Video'}</RecordRow>
+            <RecordRow label="Permanent URL"><a className="certificate-url" href={permanentUrl}>{permanentUrl}</a></RecordRow>
+            {tumblr && <RecordRow label="External Publication"><a href={tumblr.tumblr_url} target="_blank" rel="noopener noreferrer">Bài đăng Tumblr ↗</a></RecordRow>}
+            <RecordRow label="Preview">
+              <figure className="certificate-preview" aria-label="Bản xem trước tác phẩm">
+                {previewKey ? asset.media_type === 'image'
+                  ? <Image src={`/api/works/${asset.id}/preview`} alt={`Bản xem trước: ${asset.title}`} width={1200} height={900} unoptimized className="certificate-preview-image"/>
+                  : <video controls preload="metadata" src={`/api/works/${asset.id}/preview`} aria-label={`Bản xem trước video: ${asset.title}`}/>
+                  : <div className="certificate-no-preview"><ImageIcon size={24} aria-hidden="true"/><span>Chưa có bản xem trước.</span></div>}
+              </figure>
+              <small className="certificate-field-note">Bản xem trước · Bản gốc được lưu riêng tư</small>
+            </RecordRow>
+          </tbody></table>
+        </section>
 
-          <div className="certificate-evidence">
-            <section className="certificate-integrity" aria-labelledby="integrity-heading">
-              <h2 id="integrity-heading">SHA-256</h2>
-              {integrityVerified ? <code className="certificate-hash">{asset.sha256}</code> : <p className="certificate-muted">Chưa có kết quả đối chiếu tệp.</p>}
-            </section>
-            {tumblr && <section className="certificate-publication" aria-labelledby="publication-heading">
-              <h2 id="publication-heading">Chứng cứ Tumblr <ExternalLink size={13} aria-hidden="true"/></h2>
-              <a className="certificate-tumblr-url" href={tumblr.tumblr_url} target="_blank" rel="noopener noreferrer">{tumblr.tumblr_url}</a>
-              <p className="certificate-post-id">Post ID: <span>{tumblr.tumblr_post_id}</span></p>
-            </section>}
-          </div>
+        <section className="certificate-evidence" aria-labelledby="integrity-heading">
+          <h2 id="integrity-heading" className="certificate-section-heading">File Integrity &amp; Technical Evidence</h2>
+          <table className="certificate-table" aria-labelledby="integrity-heading"><tbody>
+            <RecordRow label="SHA-256">{integrityVerified ? <code className="certificate-hash">{asset.sha256}</code> : <span className="certificate-muted">Chưa có kết quả đối chiếu tệp.</span>}</RecordRow>
+            {integrityVerified && <RecordRow label="Ngày xác minh file (hệ thống ghi nhận)">{formatViDate(asset.verified_at)}</RecordRow>}
+            {published && asset.published_at && <RecordRow label="Ngày công bố trên ToolNet (hệ thống ghi nhận)">{formatViDate(asset.published_at)}</RecordRow>}
+            {tumblr && <RecordRow label="Tumblr Post ID"><code>{tumblr.tumblr_post_id}</code></RecordRow>}
+          </tbody></table>
+        </section>
 
-          <details className="certificate-timeline">
-            <summary>Thời gian thao tác thực tế</summary>
-            <dl>
-              <div><dt>Ngày tải lên ToolNet (hệ thống ghi nhận)</dt><dd>{formatViDate(asset.created_at)}</dd></div>
-              <div><dt>Ngày xác minh file (hệ thống ghi nhận)</dt><dd>{integrityVerified ? formatViDate(asset.verified_at) : 'Chưa ghi nhận'}</dd></div>
-              <div><dt>Ngày công bố trên ToolNet (hệ thống ghi nhận)</dt><dd>{published ? formatViDate(asset.published_at) : 'Chưa ghi nhận'}</dd></div>
-            </dl>
-          </details>
+        <section className="certificate-declaration" aria-labelledby="ownership-heading">
+          <h2 id="ownership-heading">Copyright Ownership Declaration</h2>
+          <p>Chủ sở hữu khai báo quyền đối với tác phẩm theo cơ sở: <strong>{ownership.toLowerCase()}</strong>.</p>
+          {published && asset.description && <p className="certificate-description">{asset.description}</p>}
+        </section>
 
-          <footer className="certificate-footer">
-            <p className="certificate-notice">Ngày sáng tạo là khai báo của chủ sở hữu; SHA-256 chỉ đối chiếu tính toàn vẹn tệp. Đây không phải chứng nhận pháp lý của DMCA.</p>
-            <CertificateActions url={permanentUrl} title={asset.title}/>
-          </footer>
-          <div className="certificate-microtext" aria-label="Mã định danh URL">
-            <code data-permanent-url-base64={microtext}>{microtext}</code>
-            <span>Base64 của Permanent URL, không phải chữ ký số hoặc bằng chứng xác thực độc lập.</span>
-          </div>
-        </div>
+        <section className="certificate-permalink" aria-labelledby="permalink-heading">
+          <a className="certificate-qr" href={permanentUrl} aria-label="Mở Permanent URL của tác phẩm"><Image src={qr} width={110} height={110} alt="QR code mở hồ sơ tác phẩm" unoptimized/></a>
+          <div className="certificate-permalink-content"><h2 id="permalink-heading">Permanent Link &amp; Record</h2><a className="certificate-link-display" href={permanentUrl}>{permanentUrl}</a><p>Quét QR để mở bản ghi này trên ToolNet Copyright.</p><CertificateActions url={permanentUrl} title={asset.title}/></div>
+        </section>
+
+        <footer className="certificate-footer">
+          <p>© {new Date().getFullYear()} ToolNet Copyright — Digital Ownership Registry.</p>
+          <p className="certificate-notice">Ngày sáng tạo là khai báo của chủ sở hữu. SHA-256 chỉ đối chiếu tính toàn vẹn tệp. Bản ghi này không thay thế đăng ký quyền tác giả tại cơ quan nhà nước và không phải chứng nhận pháp lý của DMCA.</p>
+          <div className="certificate-microtext" aria-label="Mã định danh URL"><code data-permanent-url-base64={microtext}>{microtext}</code><span>Base64 của Permanent URL, không phải chữ ký số hoặc bằng chứng xác thực độc lập.</span></div>
+        </footer>
       </article>
     </div>
   </main>;
