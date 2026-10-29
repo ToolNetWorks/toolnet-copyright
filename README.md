@@ -225,3 +225,9 @@ For photo uploads, the admin selects an original creation date when registering.
 
 ### Tumblr copyright declaration template
 For photographs the posted text uses the user-supplied declaration beginning `DECLARATION OF COPYRIGHT OWNERSHIP`, with the exact brand `copyright-toolnet`, place `Japan` and email `toolnet.official@gmail.com`. The **DATE OF CREATION / PRODUCTION** comes from the owner's selected creation date (`DD/MM/YYYY`). The **DATE OF DECLARATION** uses the actual calendar date when the declaration is sent, because posting today cannot constitute a sworn statement made years earlier. The form requires a separate affirmative checkbox confirming the sole-author, exclusive-ownership, authority-to-sign and Japan assertions. Tumblr publishing API rejects requests without explicit confirmation. A date backdated for Tumblr display is not verified history.
+
+### Public work certificate
+
+`/works/{asset UUID}` displays a responsive ToolNet Copyright record with owner-declared creation dates, a permanent URL, an internally generated QR code (`qrcode`), a declaration summary, Tumblr link and sharing controls. A successful Tumblr photo publication can expose this record while SHA-256 verification is pending; other private records remain unavailable. The VERIFIED seal and file hash require verified status, a valid SHA-256 and a recorded verification timestamp. Only verified, publicly published records are indexable.
+
+`/api/works/{asset UUID}/preview` applies the same visibility policy and streams only an allowlisted derived preview from private R2, including video byte ranges. It never redirects to or serves original/staging keys. The multicolour microtext strip encodes the permanent URL as Base64 for display; it is neither a digital signature nor independent authentication evidence. This presentation does not change Tumblr captions, posting dates, the publication pipeline, stored timestamps or the database schema.

@@ -1,71 +1,149 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
+import QRCode from 'qrcode';
+import { ArrowLeft, ArrowUpRight, Check, CircleCheck, Clock3, ExternalLink, FileCheck2, Fingerprint, ImageIcon, Link2, LockKeyhole, Shield, ShieldCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, BadgeCheck, CalendarDays, Fingerprint, ShieldCheck, Video } from 'lucide-react';
-import { database, getAsset } from '@/lib/db';
-import { uuid } from '@/lib/validation';
+import CertificateActions from '@/components/certificate-actions';
+import { getPublicWork, permanentWorkUrl } from '@/lib/public-work';
 import { formatViDate } from '@/lib/time-claims';
+
 export const dynamic = 'force-dynamic';
-export async function generateMetadata({ params }: { params: Promise<{id: string}> }): Promise<Metadata> {
- const parsed = uuid.safeParse((await params).id);
- if (!parsed.success) return { title: 'Tác phẩm không tồn tại', robots: { index: false } };
- const asset = await getAsset(parsed.data).catch(() => null);
- if (!asset) return { title: 'Tác phẩm không tồn tại', robots: { index: false } };
- if (!asset.is_public || asset.status !== 'verified')
-   return { title: 'Hồ sơ đang xử lý | ToolNet Copyright', robots: { index: false, follow: false } };
- return { title: asset.title, description: `Hồ sơ công bố tác phẩm: ${asset.title}. Chủ sở hữu khai báo: ${asset.owner_name}.` };
+type Context = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Context): Promise<Metadata> {
+  const work = await getPublicWork((await params).id);
+  if (!work) return { title: 'Tác phẩm không tồn tại', robots: { index: false, follow: false } };
+  return {
+    title: `${work.asset.title} | Hồ sơ tác phẩm`,
+    description: `Hồ sơ khai báo tác phẩm của ${work.asset.owner_name} trên ToolNet Copyright.`,
+    alternates: { canonical: permanentWorkUrl(work.asset.id) },
+    robots: { index: work.published, follow: work.published },
+  };
 }
-export default async function Work({ params }: { params: Promise<{id: string}> }) {
- const parsed = uuid.safeParse((await params).id);
- if (!parsed.success) notFound();
- const asset = await getAsset(parsed.data).catch(() => null);
- if (!asset) notFound();
 
- if (!asset.is_public || asset.status !== 'verified') {
-   if (asset.media_type !== 'image') notFound();
+export default async function Work({ params }: Context) {
+  const work = await getPublicWork((await params).id);
+  if (!work) notFound();
+  const { asset, tumblr, integrityVerified, published, previewKey } = work;
+  const permanentUrl = permanentWorkUrl(asset.id);
+  const microtext = Buffer.from(permanentUrl, 'utf8').toString('base64');
+  const qr = await QRCode.toDataURL(permanentUrl, {
+    errorCorrectionLevel: 'M', margin: 4, width: 240, color: { dark: '#173d31', light: '#ffffffff' },
+  });
+  const status = published ? 'Đã xác minh & công bố' : integrityVerified ? 'Đã xác minh · Chờ công bố' : 'Đã đăng Tumblr · Chờ xác minh';
+  const ownership = asset.owner_basis === 'original_creator' ? 'Tác giả / chủ sở hữu gốc'
+    : asset.owner_basis === 'rights_transfer' ? 'Chuyển giao quyền' : 'Quyền sử dụng độc quyền';
 
-   const sql = database();
-   const rows = await sql`
-     SELECT tumblr_url
-     FROM tumblr_publications
-     WHERE asset_id=${asset.id}::uuid
-       AND status='published'
-       AND tumblr_url IS NOT NULL
-     LIMIT 1
-   `;
-
-   const tumblrUrl = rows[0]?.tumblr_url;
-   if (typeof tumblrUrl !== 'string') notFound();
-
-   return <main className="light-main">
-     <div className="container listing-content">
-       <div className="page-intro">
-         <span className="kicker">TOOLNET COPYRIGHT</span>
-         <h1>{asset.title}</h1>
-         <p>
-           {asset.status === 'verified'
-             ? 'SHA-256 đã xác minh. Hồ sơ đang chờ công bố.'
-             : 'Ảnh đã đăng Tumblr. Hồ sơ đang chờ xác minh SHA-256.'}
-         </p>
-         <p><strong>Chủ sở hữu khai báo:</strong> {asset.owner_name}</p>
-         <p><strong>Ngày tạo gốc khai báo:</strong> {formatViDate(asset.original_created_at)}</p>
-         <p><strong>Ngày theo khai báo:</strong> {formatViDate(asset.original_created_at)}</p>
-         <a className="btn" href={tumblrUrl}
-            target="_blank" rel="noopener noreferrer">
-           Xem bài viết Tumblr
-         </a>
-       </div>
-     </div>
-   </main>;
- }
-
- return <main className="light-main"><div className="container work-page"><Link href="/registry" className="back-link"><ArrowLeft size={17}/> Quay lại kho tác phẩm</Link><div className="work-grid"><div className="work-preview">{asset.media_type === 'image' ? <img src={`/api/media/${asset.id}`} alt={asset.title}/> : <video controls preload="metadata" src={`/api/media/${asset.id}`}/>}</div>
-   <div className="work-details"><span className="tag"><BadgeCheck size={16}/> INTEGRITY VERIFIED</span><h1>{asset.title}</h1><p>{asset.description || 'Hồ sơ tác phẩm được công bố trên ToolNet Copyright.'}</p><div className="work-data"><div><span><ShieldCheck size={16}/> Chủ sở hữu khai báo</span><strong>{asset.owner_name}</strong></div>{asset.original_created_at && <div><span><CalendarDays size={16}/> Ngày sáng tạo gốc (chủ sở hữu khai báo)</span><strong>{formatViDate(asset.original_created_at)}</strong></div>}
-   {asset.original_captured_at && <div><span><CalendarDays size={16}/> Ngày chụp/quay (chủ sở hữu khai báo)</span><strong>{formatViDate(asset.original_captured_at)}</strong></div>}
-   {asset.original_published_at && <div><span><CalendarDays size={16}/> Ngày công bố đầu tiên (chủ sở hữu khai báo)</span><strong>{formatViDate(asset.original_published_at)}</strong></div>}
-   {asset.copyright_effective_at && <div><span><CalendarDays size={16}/> Ngày bắt đầu có quyền (chủ sở hữu khai báo)</span><strong>{formatViDate(asset.copyright_effective_at)}</strong></div>}
-   {asset.time_claim_version > 0 && <div><span><CalendarDays size={16}/> Phiên bản khai báo thời gian</span><strong>#{asset.time_claim_version} · cập nhật {formatViDate(asset.time_claim_updated_at)}</strong></div>}
-   <div><span><CalendarDays size={16}/> Ngày tải lên ToolNet (hệ thống ghi nhận)</span><strong>{formatViDate(asset.created_at)}</strong></div>
-   <div><span><CalendarDays size={16}/> Ngày xác minh file (hệ thống ghi nhận)</span><strong>{formatViDate(asset.verified_at)}</strong></div>
-   <div><span><CalendarDays size={16}/> Ngày công bố trên ToolNet (hệ thống ghi nhận)</span><strong>{formatViDate(asset.published_at)}</strong></div><div><span><Fingerprint size={16}/> Mã định danh SHA-256</span><code>{asset.sha256}</code></div><div><span>Loại tác phẩm</span><strong>{asset.media_type === 'image' ? 'Hình ảnh' : 'Video'}</strong></div></div><div className="legal-note"><Video size={17}/> Các ngày sáng tạo, chụp/quay và công bố đầu tiên là thông tin do chủ sở hữu khai báo, có thể được đính chính với lịch sử ghi nhận. Ngày upload và xác minh do hệ thống ghi riêng. SHA-256 xác minh nội dung tệp; không tự chứng nhận quyền tác giả hoặc thời gian sáng tạo.</div></div></div></div></main>;
+  return <main className="certificate-page">
+    <div className="certificate-shell">
+      <nav className="certificate-breadcrumb" aria-label="Đường dẫn">
+        <Link href="/registry"><ArrowLeft size={14} aria-hidden="true"/> Kho tác phẩm</Link>
+        <span>Hồ sơ tác phẩm</span>
+      </nav>
+      <article className={`certificate ${integrityVerified ? 'certificate-verified' : 'certificate-pending'}`} aria-labelledby="certificate-title">
+        <div className="certificate-paper">
+          <header className="certificate-masthead">
+            <Link href="/" className="certificate-brand" aria-label="ToolNet Copyright — Trang chủ">
+              <span className="certificate-brand-icon"><Fingerprint size={30} strokeWidth={1.4} aria-hidden="true"/></span>
+              <span>TOOLNET<strong>COPYRIGHT</strong></span>
+            </Link>
+            <div className="certificate-heading"><span>COPYRIGHT RECORD CERTIFICATE</span><p>Hồ sơ tác phẩm & toàn vẹn tệp</p></div>
+            <div className="certificate-edition"><span>RECORD NO.</span><strong>{asset.id.slice(0, 8).toUpperCase()}</strong><span>TOOLNET REGISTRY</span></div>
+          </header>
+          <div className="certificate-grid">
+            <aside className="certificate-protection" aria-label="Trạng thái hồ sơ">
+              <div className="certificate-seal">
+                <span className="certificate-seal-top">TOOLNET COPYRIGHT</span>
+                {integrityVerified ? <ShieldCheck size={54} strokeWidth={1.15} aria-hidden="true"/> : <Shield size={54} strokeWidth={1.15} aria-hidden="true"/>}
+                <strong>{integrityVerified ? 'SHA-256' : 'PENDING'}</strong>
+                <span className="certificate-seal-bottom">{integrityVerified ? 'INTEGRITY VERIFIED' : 'INTEGRITY CHECK'}</span>
+              </div>
+              <span className="certificate-overline">RECORD STATUS</span>
+              <h2>{integrityVerified ? 'Toàn vẹn tệp\nđã xác minh' : 'Đang chờ\nxác minh tệp'}</h2>
+              <p className="certificate-protection-note">{integrityVerified
+                ? 'SHA-256 của tệp nguồn đã được đối chiếu với bản lưu trữ.'
+                : 'Ảnh đã được đăng Tumblr. SHA-256 của tệp nguồn chưa được kiểm tra.'}</p>
+              <div className="certificate-protection-list">
+                <div><CircleCheck size={16} aria-hidden="true"/><span>Hồ sơ đã ghi nhận</span></div>
+                <div><LockKeyhole size={16} aria-hidden="true"/><span>Bản gốc lưu riêng tư</span></div>
+                <div>{integrityVerified ? <CircleCheck size={16} aria-hidden="true"/> : <Clock3 size={16} aria-hidden="true"/>}<span>{integrityVerified ? 'Đã kiểm tra SHA-256' : 'Chờ kiểm tra SHA-256'}</span></div>
+              </div>
+              <p className="certificate-seal-disclaimer">Bản ghi kỹ thuật của ToolNet.<br/>Không phải xác thực pháp lý của DMCA.</p>
+            </aside>
+            <section className="certificate-work" aria-label="Tác phẩm">
+              <div className="certificate-work-heading"><span className="certificate-overline">REGISTERED WORK</span><span className="certificate-media-type">{asset.media_type === 'image' ? 'PHOTOGRAPH' : 'VIDEO'}</span></div>
+              <h1 id="certificate-title">{asset.title}</h1>
+              <p className="certificate-byline">Khai báo bởi <strong>{asset.owner_name}</strong></p>
+              <figure className="certificate-preview">
+                <div className="certificate-preview-frame">
+                  {previewKey ? asset.media_type === 'image'
+                    ? <Image src={`/api/works/${asset.id}/preview`} alt={`Bản xem trước: ${asset.title}`} width={1200} height={900} unoptimized className="certificate-preview-image"/>
+                    : <video controls preload="metadata" src={`/api/works/${asset.id}/preview`} aria-label={`Bản xem trước video: ${asset.title}`}/>
+                    : <div className="certificate-preview-placeholder"><ImageIcon size={38} strokeWidth={1} aria-hidden="true"/><span>Chưa có bản xem trước để hiển thị</span></div>}
+                  <span className="certificate-preview-label"><LockKeyhole size={11} aria-hidden="true"/> PUBLIC PREVIEW</span>
+                </div>
+                <figcaption>Chỉ hiển thị bản xem trước. Tệp nguồn được lưu trong kho riêng tư.</figcaption>
+              </figure>
+              <div className="certificate-state"><span aria-hidden="true"/>{status}</div>
+              <p className="certificate-record-note">Một liên kết cố định. Một hồ sơ có thể đối chiếu.</p>
+            </section>
+            <aside className="certificate-metadata" aria-label="Thông tin và liên kết cố định">
+              <div className="certificate-permalink">
+                <h2><Link2 size={14} aria-hidden="true"/> PERMANENT URL</h2>
+                <a className="certificate-url" href={permanentUrl}>{permanentUrl}</a>
+                <a className="certificate-qr" href={permanentUrl} aria-label="Mở Permanent URL của tác phẩm">
+                  <Image src={qr} width={144} height={144} alt="QR code mở liên kết cố định của tác phẩm" unoptimized/>
+                </a>
+                <p>Quét mã để mở hồ sơ này</p>
+              </div>
+              <dl className="certificate-facts">
+                <div><dt>Chủ sở hữu khai báo</dt><dd>{asset.owner_name}</dd></div>
+                <div><dt>Ngày sáng tạo gốc (chủ sở hữu khai báo)</dt><dd>{formatViDate(asset.original_created_at)}</dd><small>Thông tin khai báo · Giờ Việt Nam</small></div>
+                <div><dt>Cơ sở quyền khai báo</dt><dd>{ownership}</dd></div>
+                <div><dt>Loại tác phẩm</dt><dd>{asset.media_type === 'image' ? 'Hình ảnh' : 'Video'}</dd></div>
+                <div><dt>Mã định danh tác phẩm</dt><dd className="certificate-uuid">{asset.id}</dd></div>
+              </dl>
+            </aside>
+          </div>
+          <section className="certificate-declaration" aria-labelledby="ownership-heading">
+            <div className="certificate-section-heading"><FileCheck2 size={20} strokeWidth={1.5} aria-hidden="true"/><div><span className="certificate-overline">OWNER-DECLARED INFORMATION</span><h2 id="ownership-heading">Copyright Ownership Declaration</h2></div></div>
+            <p>Chủ sở hữu được khai báo là <strong>{asset.owner_name}</strong>, với cơ sở quyền <strong>{ownership.toLowerCase()}</strong> đối với tác phẩm <strong>“{asset.title}”</strong>. Ngày sáng tạo gốc được chủ sở hữu khai báo: <strong>{formatViDate(asset.original_created_at)}</strong>.</p>
+            {published && asset.description && <p className="certificate-description">{asset.description}</p>}
+            <p className="certificate-declaration-note">Nội dung trên được trích từ hồ sơ do chủ sở hữu cung cấp. Bản ghi này không tự xác nhận quyền tác giả, không phải chứng nhận pháp lý và không được DMCA xác thực.</p>
+          </section>
+          <div className="certificate-evidence-grid">
+            <section className="certificate-integrity" aria-labelledby="integrity-heading">
+              <div className="certificate-section-heading"><Fingerprint size={21} strokeWidth={1.5} aria-hidden="true"/><div><span className="certificate-overline">FILE INTEGRITY</span><h2 id="integrity-heading">{integrityVerified ? 'SHA-256 đã xác minh' : 'Chờ xác minh SHA-256'}</h2></div></div>
+              {integrityVerified ? <><code className="certificate-hash">{asset.sha256}</code><p>Giá trị băm xác minh tính toàn vẹn tệp, không tự chứng minh quyền sở hữu hay thời điểm sáng tạo.</p></>
+                : <p>Chưa có kết quả đối chiếu tệp nguồn. Hồ sơ sẽ cập nhật sau khi quản trị viên thực hiện xác minh SHA-256.</p>}
+            </section>
+            <section className="certificate-publication" aria-labelledby="publication-heading">
+              <div className="certificate-section-heading"><ExternalLink size={19} strokeWidth={1.5} aria-hidden="true"/><div><span className="certificate-overline">EXTERNAL PUBLICATION</span><h2 id="publication-heading">Bài đăng Tumblr</h2></div></div>
+              {tumblr ? <><a href={tumblr.tumblr_url} target="_blank" rel="noopener noreferrer">Xem bài viết Tumblr <ArrowUpRight size={15} aria-hidden="true"/></a><span className="certificate-external-url">{tumblr.tumblr_url}</span></>
+                : <p>Chưa có liên kết Tumblr được ghi nhận cho tác phẩm này.</p>}
+              <p>Ngày hiển thị trên Tumblr có thể là ngày do chủ sở hữu chọn; không phải chứng cứ bài đăng đã tồn tại từ thời điểm đó.</p>
+            </section>
+          </div>
+          <details className="certificate-timeline">
+            <summary><Clock3 size={15} aria-hidden="true"/> Dấu thời gian hệ thống <span>Thời gian thao tác thực tế</span></summary>
+            <dl>
+              <div><dt>Ngày tải lên ToolNet (hệ thống ghi nhận)</dt><dd>{formatViDate(asset.created_at)}</dd></div>
+              <div><dt>Ngày xác minh file (hệ thống ghi nhận)</dt><dd>{integrityVerified ? formatViDate(asset.verified_at) : 'Chưa xác minh'}</dd></div>
+              <div><dt>Ngày công bố trên ToolNet (hệ thống ghi nhận)</dt><dd>{published ? formatViDate(asset.published_at) : 'Chưa công bố'}</dd></div>
+            </dl>
+          </details>
+          <footer className="certificate-bottom">
+            <div className="certificate-bottom-brand"><Shield size={17} aria-hidden="true"/><span>TOOLNET COPYRIGHT<small>Clarity in ownership. Integrity in every record.</small></span></div>
+            <CertificateActions url={permanentUrl} title={asset.title}/>
+          </footer>
+        </div>
+        <div className="certificate-microtext" aria-label="Mã định danh hiển thị Base64 của Permanent URL">
+          <div className="certificate-microtext-line" data-permanent-url-base64={microtext}><span>TOOLNET · URL RECORD · </span><code>{microtext}</code><span aria-hidden="true"> · {microtext} · {microtext}</span></div>
+          <p>Base64 của Permanent URL · Mã định danh hiển thị, không phải chữ ký số hoặc bằng chứng xác thực độc lập.</p>
+        </div>
+      </article>
+      <div className="certificate-outside-note"><Check size={13} aria-hidden="true"/><span>Hồ sơ có thể cập nhật trạng thái. Permanent URL luôn sử dụng UUID của tác phẩm.</span></div>
+    </div>
+  </main>;
 }
