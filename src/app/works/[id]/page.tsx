@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, BadgeCheck, CalendarDays, Fingerprint, ShieldCheck, Video } from 'lucide-react';
-import { getAsset } from '@/lib/db';
+import { database, getAsset } from '@/lib/db';
 import { uuid } from '@/lib/validation';
 import { formatViDate } from '@/lib/time-claims';
 export const dynamic = 'force-dynamic';
@@ -10,14 +10,55 @@ export async function generateMetadata({ params }: { params: Promise<{id: string
  const parsed = uuid.safeParse((await params).id);
  if (!parsed.success) return { title: 'Tác phẩm không tồn tại', robots: { index: false } };
  const asset = await getAsset(parsed.data).catch(() => null);
- if (!asset?.is_public) return { title: 'Tác phẩm không tồn tại', robots: { index: false } };
+ if (!asset) return { title: 'Tác phẩm không tồn tại', robots: { index: false } };
+ if (!asset.is_public || asset.status !== 'verified')
+   return { title: 'Hồ sơ đang xử lý | ToolNet Copyright', robots: { index: false, follow: false } };
  return { title: asset.title, description: `Hồ sơ công bố tác phẩm: ${asset.title}. Chủ sở hữu khai báo: ${asset.owner_name}.` };
 }
 export default async function Work({ params }: { params: Promise<{id: string}> }) {
  const parsed = uuid.safeParse((await params).id);
  if (!parsed.success) notFound();
  const asset = await getAsset(parsed.data).catch(() => null);
- if (!asset?.is_public || asset.status !== 'verified') notFound();
+ if (!asset) notFound();
+
+ if (!asset.is_public || asset.status !== 'verified') {
+   if (asset.media_type !== 'image') notFound();
+
+   const sql = database();
+   const rows = await sql`
+     SELECT tumblr_url
+     FROM tumblr_publications
+     WHERE asset_id=${asset.id}::uuid
+       AND status='published'
+       AND tumblr_url IS NOT NULL
+     LIMIT 1
+   `;
+
+   const tumblrUrl = rows[0]?.tumblr_url;
+   if (typeof tumblrUrl !== 'string') notFound();
+
+   return <main className="light-main">
+     <div className="container listing-content">
+       <div className="page-intro">
+         <span className="kicker">TOOLNET COPYRIGHT</span>
+         <h1>{asset.title}</h1>
+         <p>
+           {asset.status === 'verified'
+             ? 'SHA-256 đã xác minh. Hồ sơ đang chờ công bố.'
+             : 'Ảnh đã đăng Tumblr. Hồ sơ đang chờ xác minh SHA-256.'}
+         </p>
+         <p><strong>Chủ sở hữu khai báo:</strong> {asset.owner_name}</p>
+         <p><strong>Ngày tạo gốc khai báo:</strong> {formatViDate(asset.original_created_at)}</p>
+         <p><strong>Ngày tải lên thực tế:</strong> {formatViDate(asset.created_at)}</p>
+         <a className="btn" href={tumblrUrl}
+            target="_blank" rel="noopener noreferrer">
+           Xem bài viết Tumblr
+         </a>
+       </div>
+     </div>
+   </main>;
+ }
+
  return <main className="light-main"><div className="container work-page"><Link href="/registry" className="back-link"><ArrowLeft size={17}/> Quay lại kho tác phẩm</Link><div className="work-grid"><div className="work-preview">{asset.media_type === 'image' ? <img src={`/api/media/${asset.id}`} alt={asset.title}/> : <video controls preload="metadata" src={`/api/media/${asset.id}`}/>}</div>
    <div className="work-details"><span className="tag"><BadgeCheck size={16}/> INTEGRITY VERIFIED</span><h1>{asset.title}</h1><p>{asset.description || 'Hồ sơ tác phẩm được công bố trên ToolNet Copyright.'}</p><div className="work-data"><div><span><ShieldCheck size={16}/> Chủ sở hữu khai báo</span><strong>{asset.owner_name}</strong></div>{asset.original_created_at && <div><span><CalendarDays size={16}/> Ngày sáng tạo gốc (chủ sở hữu khai báo)</span><strong>{formatViDate(asset.original_created_at)}</strong></div>}
    {asset.original_captured_at && <div><span><CalendarDays size={16}/> Ngày chụp/quay (chủ sở hữu khai báo)</span><strong>{formatViDate(asset.original_captured_at)}</strong></div>}
